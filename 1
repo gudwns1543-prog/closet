@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyWardrobe AI — 스마트 옷장 관리</title>
+<style>
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --purple:#7C3AED;--purple-dark:#6D28D9;--purple-light:#F5F3FF;--purple-border:#DDD6FE;
+  --ink:#111827;--muted:#6B7280;--hint:#9CA3AF;
+  --bg:#F9FAFB;--surface:#F3F4F6;--card:#FFFFFF;
+  --border:#E5E7EB;--border2:#D1D5DB;
+  --r:8px;--rl:12px;--rxl:16px;
+  --green:#22C55E;--amber:#F59E0B;--red:#EF4444;--blue:#3B82F6;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh}
+button,input,select,textarea{font-family:inherit}
+img{display:block;max-width:100%}
+a{color:var(--purple);text-decoration:none}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:8px;padding:0 16px;height:52px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.logo-btn{display:flex;align-items:center;gap:7px;background:none;border:none;cursor:pointer;padding:6px 8px;border-radius:var(--r);transition:background .15s}
+.logo-btn:hover{background:var(--surface)}
+.logo-icon{font-size:20px}
+.logo-text{font-size:15px;font-weight:700;color:var(--purple);letter-spacing:-.3px}
+.nav-tabs{display:flex;gap:2px;flex:1;padding:0 8px}
+.nav-tab{padding:6px 16px;border-radius:var(--r);border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--muted);font-weight:500;transition:all .15s;white-space:nowrap}
+.nav-tab:hover{background:var(--surface);color:var(--ink)}
+.nav-tab.active{background:var(--purple);color:#fff}
+.btn-add{padding:7px 16px;background:var(--purple);color:#fff;border:none;border-radius:var(--r);font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;transition:background .15s}
+.btn-add:hover{background:var(--purple-dark)}
+.pages{flex:1;overflow:hidden;position:relative}
+.page{display:none;height:100%;overflow-y:auto}
+.page.active{display:flex;flex-direction:column}
+
+/* ═══════════════════════════════════════════
+   HOME PAGE
+═══════════════════════════════════════════ */
+.home-wrap{padding:20px;display:flex;flex-direction:column;gap:16px;max-width:1100px;width:100%;margin:0 auto}
+.home-hero{background:linear-gradient(135deg,#7C3AED 0%,#4F46E5 60%,#0891B2 100%);border-radius:var(--rxl);padding:24px 28px;color:#fff;position:relative;overflow:hidden}
+.hero-bg{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:100px;opacity:.1;pointer-events:none;line-height:1}
+.hero-date{font-size:12px;opacity:.8;margin-bottom:4px}
+.hero-title{font-size:22px;font-weight:700;margin-bottom:3px}
+.hero-sub{font-size:13px;opacity:.8}
+.weather-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.wcard{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:11px 8px;text-align:center;transition:transform .15s,border-color .15s}
+.wcard:hover{transform:translateY(-2px);border-color:var(--purple-border)}
+.wday{font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.wicon{font-size:24px;margin-bottom:3px}
+.wtemp{font-size:13px;font-weight:600}
+.wdesc{font-size:10px;color:var(--muted);margin-top:2px}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hcard{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:16px}
+.hcard-t{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.brow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--surface);font-size:13px}
+.brow:last-child{border-bottom:none}
+.bval{font-weight:700;color:var(--purple)}
+.ai-rec{background:var(--purple-light);border:1px solid var(--purple-border);border-radius:var(--r);padding:12px;font-size:13px;line-height:1.7;min-height:60px;color:#3730A3}
+.news-item{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--surface);cursor:pointer;transition:opacity .15s}
+.news-item:hover{opacity:.7}
+.news-item:last-child{border-bottom:none}
+.ndot{width:6px;height:6px;border-radius:50%;background:var(--purple);margin-top:5px;flex-shrink:0}
+.ntext{font-size:12px;line-height:1.5;color:var(--ink)}
+.ntime{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ═══════════════════════════════════════════
+   WARDROBE
+═══════════════════════════════════════════ */
+.wd-layout{display:flex;flex:1;min-height:0;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--card);border-right:1px solid var(--border);overflow-y:auto;transition:width .2s,min-width .2s;flex-shrink:0}
+.sidebar.col{width:42px;min-width:42px;overflow:hidden}
+.sb-head{display:flex;justify-content:flex-end;padding:8px 8px 6px;border-bottom:1px solid var(--surface)}
+.sbtog{background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0;transition:all .15s}
+.sbtog:hover{background:var(--surface);border-color:var(--purple);color:var(--purple)}
+/* Tree nav */
+.tp{display:flex;align-items:center;width:100%;background:none;border:none;cursor:pointer;padding:0}
+.tpi{display:flex;align-items:center;gap:7px;padding:7px 10px;flex:1;border-radius:var(--r);margin:1px 5px;transition:background .12s}
+.tp:hover .tpi{background:var(--surface)}
+.tp.act .tpi{background:var(--purple-light)}
+.tp.act .tlbl{color:var(--purple);font-weight:600}
+.tico{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.tlbl{font-size:12px;flex:1;text-align:left;white-space:nowrap;overflow:hidden;color:var(--ink)}
+.tcnt{font-size:10px;color:var(--muted);background:var(--surface);padding:1px 6px;border-radius:20px;flex-shrink:0}
+.tarr{font-size:9px;color:var(--muted);width:14px;text-align:center;flex-shrink:0;transition:transform .2s}
+.tarr.open{transform:rotate(90deg)}
+.sidebar.col .tlbl,.sidebar.col .tcnt,.sidebar.col .tarr{display:none}
+.sidebar.col .tpi{padding:7px;justify-content:center}
+.tch{overflow:hidden;max-height:0;transition:max-height .25s}
+.tch.open{max-height:500px}
+.sidebar.col .tch{display:none}
+.tc{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 32px;cursor:pointer;border-radius:var(--r);margin:1px 5px;color:var(--muted);font-size:11px;transition:all .12s}
+.tc:hover{background:var(--surface);color:var(--ink)}
+.tc.act{background:#EDE9FE;color:var(--purple);font-weight:600}
+.tc-cnt{font-size:10px;margin-left:auto;color:var(--muted)}
+/* Wardrobe main */
+.wd-main{flex:1;overflow-y:auto;padding:14px;min-width:0}
+.stats-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.sbox{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px}
+.sval{font-size:20px;font-weight:700;color:var(--ink)}.slbl{font-size:10px;color:var(--muted);margin-top:1px;font-weight:500}
+.qtabs{display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;margin-bottom:10px;scrollbar-width:none}
+.qtabs::-webkit-scrollbar{display:none}
+.qt{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0;transition:all .15s;font-weight:500}
+.qt:hover{border-color:var(--purple);color:var(--purple)}
+.qt.act{background:var(--purple);border-color:var(--purple);color:#fff}
+.fbar{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.sw{flex:1;min-width:150px;position:relative}
+.sw input{width:100%;padding:8px 11px 8px 30px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);color:var(--ink);font-size:13px;outline:none;transition:border-color .15s}
+.sw input:focus{border-color:var(--purple)}
+.sw-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);pointer-events:none}
+.fbtn{display:flex;align-items:center;gap:5px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);cursor:pointer;font-size:12px;color:var(--muted);font-weight:500;transition:all .15s;white-space:nowrap}
+.fbtn:hover,.fbtn.act{border-color:var(--purple);color:var(--purple);background:var(--purple-light)}
+.fbadge{background:var(--purple);color:#fff;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700}
+.ssort{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);color:var(--muted);font-size:12px;outline:none;cursor:pointer}
+/* Filter panel */
+.fp{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:10px;display:none}
+.fp.open{display:block}
+.fp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.fpg label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px}
+.fpchips{display:flex;flex-wrap:wrap;gap:4px}
+.fpc{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-weight:500;transition:all .12s}
+.fpc:hover{border-color:var(--purple);color:var(--purple)}
+.fpc.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.prow{display:flex;gap:5px;align-items:center}
+.prow input{width:78px;padding:6px 7px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:12px;outline:none}
+.prow input:focus{border-color:var(--purple)}
+.fp-acts{display:flex;justify-content:flex-end;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--surface)}
+.fp-reset{padding:5px 14px;border:1px solid var(--border);border-radius:var(--r);background:transparent;font-size:12px;cursor:pointer;color:var(--muted);font-weight:500}
+.fp-done{padding:5px 16px;background:var(--purple);color:#fff;border:none;border-radius:var(--r);font-size:12px;cursor:pointer;font-weight:600}
+.afrow{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+.afc{display:flex;align-items:center;gap:4px;padding:3px 9px;background:var(--purple-light);border-radius:20px;font-size:11px;color:#5B21B6;border:1px solid var(--purple-border);font-weight:500}
+.afx{cursor:pointer;font-size:13px;opacity:.6}.afx:hover{opacity:1}
+.rinfo{font-size:11px;color:var(--muted);margin-bottom:9px;font-weight:500}
+/* Clothes grid */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.ccard{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:pointer;transition:all .18s}
+.ccard:hover{border-color:var(--purple);transform:translateY(-3px);box-shadow:0 8px 24px rgba(124,58,237,.12)}
+.cthumb{width:100%;height:130px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:42px;position:relative;overflow:hidden}
+.cthumb img{width:100%;height:100%;object-fit:cover}
+.cbadge{position:absolute;top:7px;right:7px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.cn{background:#DCFCE7;color:#166534}.cg{background:#DBEAFE;color:#1E40AF}.cm{background:#FEF9C3;color:#854D0E}.co{background:#FEE2E2;color:#991B1B}
+.cbody{padding:9px 11px}
+.cname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.ctags{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px}
+.ctag{display:inline-block;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:600}
+.ts{background:#EFF6FF;color:#1E40AF}.tst{background:#FFF7ED;color:#92400E}.tm{background:#F0FDF4;color:#166534}
+.cprice{font-size:11px;color:var(--muted);font-weight:500}
+.cprice strong{color:var(--ink);font-size:12px}
+/* color dots */
+.color-dots{display:flex;gap:3px;margin-bottom:4px}
+.cdot{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(0,0,0,.1);flex-shrink:0}
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-state div:first-child{font-size:48px;margin-bottom:12px}
+
+/* ═══════════════════════════════════════════
+   FITTING PAGE
+═══════════════════════════════════════════ */
+.fit-wrap{display:flex;flex:1;min-height:0;overflow:hidden}
+.fit-left{width:272px;min-width:272px;background:var(--card);border-right:1px solid var(--border);overflow-y:auto;padding:14px;flex-shrink:0}
+.fit-right{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.sec-t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--surface)}
+.sec{margin-bottom:16px}
+.avbox{width:100%;height:150px;border:2px dashed var(--border);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:6px;font-size:12px;color:var(--muted);position:relative;overflow:hidden;transition:all .15s}
+.avbox:hover{border-color:var(--purple);background:var(--purple-light);color:var(--purple)}
+.avbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bfgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}
+.bf{display:flex;flex-direction:column;gap:3px}
+.bf label{font-size:10px;color:var(--muted);font-weight:600}
+.bf input,.bf select{padding:6px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px;outline:none;width:100%}
+.bf input:focus,.bf select:focus{border-color:var(--purple)}
+/* Layer zones */
+.qpresets{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.qpbtn{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;cursor:pointer;color:var(--muted);font-weight:500;transition:all .15s}
+.qpbtn:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-light)}
+.lzone{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:7px;transition:border-color .15s}
+.lzone.act{border-color:var(--purple)}
+.lzhead{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--surface);cursor:pointer;user-select:none;transition:background .15s}
+.lzhead:hover{background:#ede9fe}
+.lzico{font-size:14px}
+.lzlbl{font-size:11px;font-weight:600;flex:1}
+.lzbadge{font-size:10px;padding:1px 6px;background:var(--purple);color:#fff;border-radius:20px;font-weight:600}
+.lzarr{font-size:9px;color:var(--muted);transition:transform .2s}
+.lzarr.open{transform:rotate(90deg)}
+.lzbody{display:none;padding:8px;background:var(--card)}
+.lzbody.open{display:block}
+.vol-row{display:flex;align-items:center;gap:7px;padding:4px 2px 7px;border-bottom:1px solid var(--surface);margin-bottom:6px}
+.vol-lbl{font-size:10px;color:var(--muted);width:30px;flex-shrink:0;font-weight:600}
+.vol-sl{flex:1;accent-color:var(--purple)}
+.vol-num{font-size:10px;font-weight:700;color:var(--purple);width:55px;text-align:right;flex-shrink:0}
+.vpresets{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:7px}
+.vpbtn{padding:2px 8px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:10px;cursor:pointer;color:var(--muted);font-weight:500}
+.vpbtn:hover{border-color:var(--purple);color:var(--purple)}
+.lzitems{display:flex;flex-direction:column;gap:3px;margin-bottom:5px}
+.lzitem{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:6px;background:var(--surface);font-size:11px}
+.lzname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.lzord{font-size:10px;color:var(--muted);background:var(--card);padding:1px 5px;border-radius:20px;border:1px solid var(--border)}
+.lzrm{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0 2px;transition:color .15s}
+.lzrm:hover{color:var(--red)}
+.lzadd{width:100%;padding:5px;border:1px dashed var(--border);border-radius:var(--r);background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-weight:500;transition:all .15s}
+.lzadd:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-light)}
+/* Stage */
+.stage-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:14px;flex-shrink:0}
+.stage-t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.stage-layout{display:grid;grid-template-columns:180px 1fr;gap:12px;min-height:340px}
+.stage-person{background:var(--surface);border-radius:var(--r);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
+.stage-person img{width:100%;height:100%;object-fit:cover}
+.stage-ph{font-size:11px;color:var(--muted);text-align:center;padding:12px;line-height:1.7}
+.stage-right{display:flex;flex-direction:column;gap:9px;min-width:0}
+.sil-panel{background:var(--surface);border-radius:var(--r);padding:10px;border:1px solid var(--border)}
+.sil-t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.sil-inner{display:flex;align-items:flex-start;gap:10px}
+.vscore-row{display:flex;gap:8px;align-items:center;margin-bottom:5px}
+.vscore-num{font-size:24px;font-weight:700;min-width:38px;color:var(--purple)}
+.vscore-bar-wrap{flex:1}
+.vscore-track{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:3px}
+.vscore-fill{height:100%;border-radius:4px;transition:width .4s,background .4s}
+.vscore-lbl{font-size:11px;color:var(--muted);font-weight:500}
+.verdict{padding:8px 10px;border-radius:var(--r);font-size:12px;line-height:1.6;font-weight:600;margin-bottom:5px}
+.v-ok{background:#F0FDF4;color:#166534}.v-warn{background:#FFFBEB;color:#92400E}.v-bad{background:#FEF2F2;color:#991B1B}
+.bd-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--surface);font-size:11px}
+.bd-row:last-child{border-bottom:none}
+.bv{font-weight:700}
+.lv-wrap{background:var(--surface);border-radius:var(--r);padding:9px;flex:1;overflow-y:auto;border:1px solid var(--border)}
+.lv-zone{border-radius:6px;overflow:hidden;border:1px solid var(--border);margin-bottom:6px}
+.lv-zone:last-child{margin-bottom:0}
+.lvzhead{padding:6px 9px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lvitems{display:flex;flex-wrap:wrap;gap:6px;padding:7px 9px}
+.lvitem{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px}
+.lvthumb{width:48px;height:48px;border-radius:7px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;border:1px solid var(--border);position:relative}
+.lvthumb img{width:100%;height:100%;object-fit:cover}
+.lvord{position:absolute;top:-4px;left:-4px;width:15px;height:15px;border-radius:50%;background:var(--purple);color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.lvname{font-size:9px;color:var(--muted);text-align:center;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.expose-tag{font-size:9px;padding:2px 7px;background:var(--purple-light);color:#5B21B6;border-radius:20px;border:1px solid var(--purple-border);font-weight:600;white-space:nowrap}
+/* Controls */
+.ctrl-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.cbtn{flex:1;min-width:88px;padding:8px;border:1px solid var(--border);border-radius:var(--r);background:var(--card);font-size:12px;cursor:pointer;color:var(--muted);font-weight:600;transition:all .15s}
+.cbtn:hover{background:var(--surface);border-color:var(--purple);color:var(--purple)}
+.cbtn.p{background:var(--purple);color:#fff;border-color:var(--purple)}
+.cbtn.p:hover{background:var(--purple-dark)}
+.cbtn:disabled{opacity:.5;cursor:not-allowed}
+.airesult{background:var(--purple-light);border:1px solid var(--purple-border);border-radius:var(--r);padding:12px;font-size:13px;line-height:1.7;display:none;margin-top:10px;color:#3730A3}
+.airesult.on{display:block}
+/* SPIN */
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(124,58,237,.2);border-top-color:var(--purple);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ═══════════════════════════════════════════
+   AI PHOTO SCAN (New item modal enhancement)
+═══════════════════════════════════════════ */
+.scan-zone{border:2px dashed var(--border);border-radius:var(--r);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;background:var(--surface)}
+.scan-zone:hover{border-color:var(--purple);background:var(--purple-light)}
+.scan-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.scan-zone img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface)}
+.color-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;cursor:default;transition:opacity .15s}
+.color-tag .cx{cursor:pointer;opacity:.6;font-size:13px;margin-left:2px}
+.color-tag .cx:hover{opacity:1}
+.color-add-row{display:flex;gap:5px;margin-top:6px;align-items:center}
+.color-add-row input[type=text]{flex:1;padding:6px 9px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:12px;outline:none}
+.color-add-row input[type=text]:focus{border-color:var(--purple)}
+.color-add-row input[type=color]{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--surface)}
+.color-add-row select{padding:6px 7px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--muted);font-size:11px;outline:none}
+.color-add-row button{padding:6px 12px;background:var(--purple);color:#fff;border:none;border-radius:var(--r);font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap}
+.color-tags-wrap{display:flex;flex-wrap:wrap;gap:5px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);min-height:36px;cursor:text}
+
+/* ═══════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════ */
+.stats-wrap{padding:16px;max-width:1100px;width:100%;margin:0 auto}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.sc2{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:16px}
+.sc2t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:13px}
+.brr{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.brl{font-size:11px;width:70px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.brt{flex:1;height:12px;background:var(--surface);border-radius:6px;overflow:hidden}
+.brf{height:100%;border-radius:6px;transition:width .6s}
+.brc{font-size:11px;font-weight:700;min-width:18px;text-align:right}
+
+/* ═══════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;backdrop-filter:blur(2px)}
+.overlay.open{display:flex}
+.modal{background:var(--card);border-radius:var(--rxl);width:100%;max-width:560px;margin:auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.mhero{width:100%;height:180px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:72px;overflow:hidden;position:relative}
+.mhero img{width:100%;height:100%;object-fit:cover}
+.mbody{padding:18px}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px}
+.mtit{font-size:17px;font-weight:700}.msub2{font-size:12px;color:var(--muted);margin-top:2px;font-weight:500}
+.mclose{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:2px;transition:color .15s}
+.mclose:hover{color:var(--ink)}
+.mtags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
+.mt{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.mtp{background:#F5F3FF;color:#5B21B6}.mtb{background:#EFF6FF;color:#1E40AF}.mtg{background:#F0FDF4;color:#166634}.mta{background:#FFFBEB;color:#92400E}.mtr{background:#FEF2F2;color:#991B1B}
+.igrid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.ic{padding:8px 11px;border-bottom:1px solid var(--surface);border-right:1px solid var(--border)}
+.ic:nth-child(even){border-right:none}
+.ic:nth-last-child(-n+2){border-bottom:none}
+.icl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600}
+.icv{font-size:12px;font-weight:600}
+.mmemo{background:var(--surface);border-radius:var(--r);padding:10px;font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;border:1px solid var(--border)}
+.mlink{display:inline-flex;align-items:center;gap:4px;color:var(--purple);font-size:12px;margin-bottom:12px;font-weight:500}
+.mfoot{display:flex;gap:7px;padding-top:12px;border-top:1px solid var(--surface)}
+.mfb{flex:1;padding:9px;border-radius:var(--r);font-size:12px;cursor:pointer;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s}
+.mfb:hover{background:var(--surface)}
+.mfb.p{background:var(--purple);color:#fff;border-color:var(--purple)}
+.mfb.p:hover{background:var(--purple-dark)}
+.mfb.d{color:var(--red);border-color:#FECACA}
+.mfb.d:hover{background:#FEF2F2}
+/* Add modal */
+.am-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto;backdrop-filter:blur(2px)}
+.am-overlay.open{display:flex}
+.am{background:var(--card);border-radius:var(--rxl);width:100%;max-width:580px;padding:20px;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.am-head{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.am-x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);transition:color .15s}
+.am-x:hover{color:var(--ink)}
+.am-tabs{display:flex;gap:4px;margin-bottom:14px;padding:3px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)}
+.am-tab{flex:1;padding:7px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:all .15s}
+.am-tab.active{background:var(--card);color:var(--purple);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.am-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.amfull{grid-column:1/-1}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.fg input,.fg select,.fg textarea{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:12px;outline:none;width:100%;transition:border-color .15s;font-weight:500}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--purple)}
+.fg textarea{resize:none;height:52px;line-height:1.5}
+.am-foot{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--surface)}
+.am-cancel{padding:8px 18px;border:1px solid var(--border);border-radius:var(--r);background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:600}
+.am-save{padding:8px 24px;background:var(--purple);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.am-save:hover{background:var(--purple-dark)}
+/* AI scan tab */
+.ai-result-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--purple-light);border:1px solid var(--purple-border);border-radius:20px;font-size:11px;color:#5B21B6;font-weight:600;margin-bottom:12px}
+.conf-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.conf-label{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap}
+.conf-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.conf-fill{height:100%;border-radius:3px;background:var(--purple);transition:width .6s}
+.conf-pct{font-size:11px;font-weight:700;color:var(--purple);min-width:30px;text-align:right}
+.ai-note{background:var(--purple-light);border:1px solid var(--purple-border);border-radius:var(--r);padding:10px 12px;font-size:12px;line-height:1.7;color:#3730A3;margin-bottom:12px}
+.ai-note-t{font-weight:700;font-size:11px;margin-bottom:3px;color:#5B21B6}
+/* Picker */
+.pk-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+.pk-overlay.open{display:flex}
+.pk-modal{background:var(--card);border-radius:var(--rxl);width:100%;max-width:500px;padding:16px;max-height:500px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.pk-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0}
+.pk-tit{font-size:15px;font-weight:700}
+.pk-search{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--ink);font-size:13px;outline:none;margin-bottom:9px;flex-shrink:0}
+.pk-search:focus{border-color:var(--purple)}
+.pk-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px}
+.pk-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);cursor:pointer;border:1px solid transparent;transition:all .12s}
+.pk-item:hover{background:var(--surface)}
+.pk-item.sel{background:var(--purple-light);border-color:var(--purple-border)}
+.pk-thumb{width:36px;height:36px;border-radius:6px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;border:1px solid var(--border)}
+.pk-thumb img{width:100%;height:100%;object-fit:cover}
+.pk-name{font-size:13px;font-weight:600;flex:1}
+.pk-sub{font-size:11px;color:var(--muted);font-weight:500}
+.pk-ck{color:var(--purple);font-size:16px;font-weight:700}
+
+/* Responsive */
+@media(max-width:640px){
+  .home-grid{grid-template-columns:1fr}
+  .weather-grid{grid-template-columns:repeat(4,1fr)}
+  .stage-layout{grid-template-columns:1fr}
+  .fit-wrap{flex-direction:column}
+  .fit-left{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}
+  .am-grid{grid-template-columns:1fr}
+  .stats-strip{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button class="logo-btn" onclick="goPage('home')">
+    <span class="logo-icon">👗</span>
+    <span class="logo-text">MyWardrobe AI</span>
+  </button>
+  <div class="nav-tabs">
+    <button class="nav-tab" id="tab-home" onclick="goPage('home')">홈</button>
+    <button class="nav-tab" id="tab-wardrobe" onclick="goPage('wardrobe')">옷장 관리</button>
+    <button class="nav-tab" id="tab-fitting" onclick="goPage('fitting')">가상 피팅</button>
+    <button class="nav-tab" id="tab-stats" onclick="goPage('stats')">통계</button>
+  </div>
+  <button class="btn-add" onclick="openAdd()">+ 새 옷 추가</button>
+</div>
+
+<div class="pages">
+
+<!-- ════ HOME ════ -->
+<div class="page" id="page-home">
+<div class="home-wrap">
+  <div class="home-hero">
+    <div class="hero-bg">👗</div>
+    <div class="hero-date" id="hDate"></div>
+    <div class="hero-title" id="hGreet">안녕하세요 👋</div>
+    <div class="hero-sub">오늘의 스타일링을 확인해보세요</div>
+  </div>
+  <div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px">📍 주간 날씨 예보</div>
+    <div class="weather-grid" id="weatherGrid"></div>
+  </div>
+  <div class="home-grid">
+    <div class="hcard" style="grid-column:1/-1">
+      <div class="hcard-t">✨ 오늘의 AI 스타일 추천</div>
+      <div class="ai-rec" id="aiRec"><span class="spin"></span>날씨와 옷장을 분석 중...</div>
+    </div>
+    <div class="hcard">
+      <div class="hcard-t">📦 내 옷장 현황</div>
+      <div id="briefRows"></div>
+    </div>
+    <div class="hcard">
+      <div class="hcard-t">📰 패션 트렌드</div>
+      <div id="newsEl"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════ WARDROBE ════ -->
+<div class="page" id="page-wardrobe">
+<div class="wd-layout">
+  <div class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <button class="sbtog" onclick="togSB()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="treeNav"></div>
+  </div>
+  <div class="wd-main">
+    <div class="stats-strip">
+      <div class="sbox"><div class="sval" id="stAll">0</div><div class="slbl">전체</div></div>
+      <div class="sbox"><div class="sval" id="stVal">₩0</div><div class="slbl">총 가치</div></div>
+      <div class="sbox"><div class="sval" id="stSea">-</div><div class="slbl">주요 계절</div></div>
+      <div class="sbox"><div class="sval" id="stSty">-</div><div class="slbl">주요 스타일</div></div>
+    </div>
+    <div class="qtabs" id="qtabs"></div>
+    <div class="fbar">
+      <div class="sw"><span class="sw-ico">🔍</span><input type="text" id="searchQ" placeholder="이름, 색상, 브랜드..." oninput="renderWD()"></div>
+      <button class="fbtn" id="fpBtn" onclick="togFP()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        필터 <span class="fbadge" id="fbadge" style="display:none">0</span>
+      </button>
+      <select class="ssort" id="ssort" onchange="renderWD()">
+        <option value="newest">최신순</option><option value="oldest">오래된순</option>
+        <option value="phi">금액높은순</option><option value="plo">금액낮은순</option><option value="name">이름순</option>
+      </select>
+    </div>
+    <div class="fp" id="fpanel">
+      <div class="fp-grid">
+        <div class="fpg"><label>계절</label><div class="fpchips">
+          <button class="fpc" data-g="season" data-v="봄" onclick="tFC(this)">봄</button>
+          <button class="fpc" data-g="season" data-v="여름" onclick="tFC(this)">여름</button>
+          <button class="fpc" data-g="season" data-v="가을" onclick="tFC(this)">가을</button>
+          <button class="fpc" data-g="season" data-v="겨울" onclick="tFC(this)">겨울</button>
+          <button class="fpc" data-g="season" data-v="사계절" onclick="tFC(this)">사계절</button>
+        </div></div>
+        <div class="fpg"><label>소재</label><div class="fpchips">
+          <button class="fpc" data-g="material" data-v="면(Cotton)" onclick="tFC(this)">면</button>
+          <button class="fpc" data-g="material" data-v="데님" onclick="tFC(this)">데님</button>
+          <button class="fpc" data-g="material" data-v="울(Wool)" onclick="tFC(this)">울</button>
+          <button class="fpc" data-g="material" data-v="린넨" onclick="tFC(this)">린넨</button>
+          <button class="fpc" data-g="material" data-v="가죽/인조가죽" onclick="tFC(this)">가죽</button>
+          <button class="fpc" data-g="material" data-v="니트" onclick="tFC(this)">니트</button>
+        </div></div>
+        <div class="fpg"><label>스타일</label><div class="fpchips">
+          <button class="fpc" data-g="style" data-v="캐주얼" onclick="tFC(this)">캐주얼</button>
+          <button class="fpc" data-g="style" data-v="포멀/오피스" onclick="tFC(this)">오피스</button>
+          <button class="fpc" data-g="style" data-v="스포츠" onclick="tFC(this)">스포츠</button>
+          <button class="fpc" data-g="style" data-v="데이트/로맨틱" onclick="tFC(this)">데이트</button>
+          <button class="fpc" data-g="style" data-v="미니멀" onclick="tFC(this)">미니멀</button>
+        </div></div>
+        <div class="fpg"><label>금액대</label>
+          <div class="prow">
+            <input type="number" id="pMin" placeholder="최소" oninput="renderWD()">
+            <span style="color:var(--muted);font-size:12px">~</span>
+            <input type="number" id="pMax" placeholder="최대" oninput="renderWD()">
+            <span style="color:var(--muted);font-size:12px">원</span>
+          </div>
+          <div class="fpchips" style="margin-top:5px">
+            <button class="fpc" onclick="setP(0,30000)">~3만</button>
+            <button class="fpc" onclick="setP(30000,80000)">3~8만</button>
+            <button class="fpc" onclick="setP(80000,200000)">8~20만</button>
+            <button class="fpc" onclick="setP(200000,9999999)">20만+</button>
+          </div>
+        </div>
+      </div>
+      <div class="fp-acts"><button class="fp-reset" onclick="resetF()">초기화</button><button class="fp-done" onclick="togFP()">완료</button></div>
+    </div>
+    <div class="afrow" id="afrow"></div>
+    <div class="rinfo" id="rinfo"></div>
+    <div class="cgrid" id="cgrid"></div>
+  </div>
+</div>
+</div>
+
+<!-- ════ FITTING ════ -->
+<div class="page" id="page-fitting">
+<div class="fit-wrap">
+  <div class="fit-left">
+    <div class="sec">
+      <div class="sec-t">내 정보</div>
+      <div class="avbox" id="avbox" onclick="document.getElementById('avfile').click()">
+        <input type="file" id="avfile" accept="image/*" style="display:none" onchange="loadAv(event)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span>내 사진 업로드</span>
+      </div>
+      <div class="bfgrid">
+        <div class="bf"><label>키(cm)</label><input type="number" id="bH" placeholder="170"></div>
+        <div class="bf"><label>몸무게</label><input type="number" id="bW" placeholder="60"></div>
+        <div class="bf"><label>상의</label><select id="bT"><option value="">-</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option></select></div>
+        <div class="bf"><label>하의</label><select id="bB"><option value="">-</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option></select></div>
+        <div class="bf" style="grid-column:1/-1"><label>체형</label><select id="bSh"><option value="">-</option><option>직사각형</option><option>모래시계형</option><option>삼각형</option><option>역삼각형</option><option>원형</option></select></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">레이어 구성</div>
+      <div class="qpresets">
+        <button class="qpbtn" onclick="applyPreset('summer')">☀️ 여름</button>
+        <button class="qpbtn" onclick="applyPreset('fall')">🍂 가을</button>
+        <button class="qpbtn" onclick="applyPreset('winter')">❄️ 겨울</button>
+        <button class="qpbtn" onclick="applyPreset('overfit')">💥 과볼륨</button>
+      </div>
+      <div id="layerZones"></div>
+    </div>
+  </div>
+  <div class="fit-right">
+    <div class="stage-card">
+      <div class="stage-t">레이어드 피팅 스테이지 — 볼륨 시뮬레이터</div>
+      <div class="stage-layout">
+        <div class="stage-person" id="stagePerson">
+          <div class="stage-ph">👤<br><span style="font-size:10px">내 사진<br>업로드</span></div>
+        </div>
+        <div class="stage-right">
+          <div class="sil-panel">
+            <div class="sil-t">볼륨 실루엣 시뮬레이터</div>
+            <div class="sil-inner">
+              <svg id="mainSil" width="108" height="256" viewBox="0 0 108 256" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+                <g opacity=".18">
+                  <ellipse cx="54" cy="22" rx="14" ry="17" fill="#9CA3AF"/>
+                  <rect x="48" y="38" width="12" height="9" rx="3" fill="#9CA3AF"/>
+                  <path d="M34 47 Q26 51 24 72 L23 112 Q23 117 54 117 Q85 117 85 112 L84 72 Q82 51 74 47 Z" fill="#9CA3AF"/>
+                  <path d="M24 55 Q17 62 15 93 Q14 101 19 103 Q25 105 27 95 L30 68 Z" fill="#9CA3AF"/>
+                  <path d="M84 55 Q91 62 93 93 Q94 101 89 103 Q83 105 81 95 L78 68 Z" fill="#9CA3AF"/>
+                  <path d="M33 114 Q30 135 27 172 Q26 181 33 181 Q40 181 41 172 L45 136 L54 133 L63 136 L67 172 Q68 181 75 181 Q82 181 81 172 Q78 135 75 114 Z" fill="#9CA3AF"/>
+                  <ellipse cx="33" cy="183" rx="8" ry="4" fill="#9CA3AF"/>
+                  <ellipse cx="75" cy="183" rx="8" ry="4" fill="#9CA3AF"/>
+                </g>
+                <g id="dynSil">
+                  <ellipse cx="54" cy="22" rx="14" ry="17" fill="#374151"/>
+                  <rect x="48" y="38" width="12" height="9" rx="3" fill="#374151"/>
+                  <path id="sbody" d="" fill="#4B5563"/>
+                  <path id="sarml" d="" fill="#4B5563"/>
+                  <path id="sarmr" d="" fill="#4B5563"/>
+                  <path id="sbot" d="" fill="#6B7280"/>
+                  <ellipse id="sfl" cx="33" cy="183" rx="8" ry="4" fill="#6B7280"/>
+                  <ellipse id="sfr" cx="75" cy="183" rx="8" ry="4" fill="#6B7280"/>
+                </g>
+                <rect x="4" y="198" width="100" height="32" rx="5" fill="#F3F4F6" stroke="#E5E7EB" stroke-width="0.5"/>
+                <text x="8" y="210" font-size="7" fill="#6B7280" font-family="sans-serif" font-weight="600">볼륨 지수</text>
+                <rect x="7" y="214" width="94" height="7" rx="3.5" fill="#E5E7EB"/>
+                <rect id="sVolBar" x="7" y="214" width="0" height="7" rx="3.5" fill="#7C3AED"/>
+                <text id="sVolPct" x="54" y="220" font-size="6" fill="#fff" text-anchor="middle" font-family="sans-serif" font-weight="bold">0%</text>
+                <text id="sVolSt" x="54" y="228" font-size="7" fill="#374151" text-anchor="middle" font-family="sans-serif" font-weight="600"></text>
+              </svg>
+              <div style="flex:1;min-width:0">
+                <div class="vscore-row">
+                  <div class="vscore-num" id="vscoreNum">0</div>
+                  <div class="vscore-bar-wrap">
+                    <div class="vscore-track"><div class="vscore-fill" id="vscoreFill" style="width:0%;background:var(--green)"></div></div>
+                    <div class="vscore-lbl">볼륨 과부하 지수</div>
+                  </div>
+                </div>
+                <div class="verdict" id="verdictBox"></div>
+                <div id="bdRows"></div>
+              </div>
+            </div>
+          </div>
+          <div class="lv-wrap" id="lvWrap">
+            <div style="font-size:11px;color:var(--muted);text-align:center;padding:18px;font-weight:500">레이어를 추가하면 여기에 표시돼요</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <button class="cbtn" onclick="renderFitStage()">피팅 미리보기</button>
+        <button class="cbtn p" id="aiBtn" onclick="runLayerAI()">AI 레이어드 분석 ↗</button>
+        <button class="cbtn" onclick="clearFit()">초기화</button>
+      </div>
+      <div class="airesult" id="aiResult"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════ STATS ════ -->
+<div class="page" id="page-stats">
+<div class="stats-wrap">
+  <div class="stats-grid" id="statsGrid"></div>
+</div>
+</div>
+
+</div><!-- /pages -->
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="detailModal">
+  <div class="modal">
+    <div class="mhero" id="mhero"></div>
+    <div class="mbody">
+      <div class="mhead"><div><div class="mtit" id="mname"></div><div class="msub2" id="msub2"></div></div><button class="mclose" onclick="closeDet()">×</button></div>
+      <div class="mtags" id="mtags"></div>
+      <div class="igrid" id="migrid"></div>
+      <div class="mmemo" id="mmemo" style="display:none"></div>
+      <a class="mlink" id="mlink" style="display:none" target="_blank">🔗 구매 링크 열기</a>
+      <div class="mfoot">
+        <button class="mfb" onclick="openAdd(curId)">✏️ 수정</button>
+        <button class="mfb p" onclick="addToLayerFromDet(curId)">피팅에 추가</button>
+        <button class="mfb d" onclick="delItem(curId)">삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="am-overlay" id="addModal">
+  <div class="am">
+    <div class="am-head"><span id="amTit">새 옷 추가</span><button class="am-x" onclick="closeAdd()">×</button></div>
+    <!-- 탭: 수동입력 / AI 사진 분석 -->
+    <div class="am-tabs">
+      <button class="am-tab active" id="tab-manual" onclick="switchAmTab('manual')">✏️ 직접 입력</button>
+      <button class="am-tab" id="tab-scan" onclick="switchAmTab('scan')">📸 AI 사진 분석</button>
+    </div>
+
+    <!-- 수동 입력 탭 -->
+    <div id="amManual">
+      <div class="am-grid">
+        <div class="fg amfull">
+          <label>사진 업로드</label>
+          <div class="scan-zone" id="manualImgZone" onclick="document.getElementById('manualImgFile').click()" style="min-height:90px">
+            <input type="file" id="manualImgFile" accept="image/*" style="display:none" onchange="prevManualImg(event)">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span style="font-size:12px;font-weight:500">클릭하여 이미지 업로드</span>
+            </div>
+          </div>
+        </div>
+        <div class="fg amfull"><label>이름 *</label><input type="text" id="fN" placeholder="예: 자라 오버핏 청바지"></div>
+        <div class="fg"><label>카테고리 *</label>
+          <select id="fCa"><option value="">선택</option>
+            <optgroup label="상의"><option value="top">티셔츠/셔츠</option><option value="knit">니트/스웨터</option><option value="blouse">블라우스</option></optgroup>
+            <optgroup label="하의"><option value="bottom">바지</option><option value="skirt">스커트</option></optgroup>
+            <optgroup label="아우터"><option value="jacket">재킷/점퍼</option><option value="coat">코트</option><option value="cardigan">가디건</option></optgroup>
+            <optgroup label="원피스"><option value="dress">원피스</option><option value="jumpsuit">점프수트</option></optgroup>
+            <optgroup label="신발"><option value="sneakers">스니커즈</option><option value="heels">구두/힐</option><option value="boots">부츠</option><option value="sandals">샌들</option></optgroup>
+            <optgroup label="악세서리"><option value="bag">가방</option><option value="jewelry">주얼리</option><option value="hat">모자</option><option value="belt">벨트</option></optgroup>
+            <optgroup label="이너/스포츠"><option value="inner">이너웨어</option><option value="sports-top">스포츠 상의</option><option value="sports-bottom">스포츠 하의</option></optgroup>
+          </select>
+        </div>
+        <div class="fg"><label>소매 길이</label>
+          <select id="fSleeve"><option value="">선택</option><option>민소매</option><option>반팔</option><option>7부</option><option>긴팔</option><option>해당없음</option></select>
+        </div>
+        <!-- 색상 섹션 -->
+        <div class="fg amfull">
+          <label>색상 (복수 저장) — 메인 + 서브</label>
+          <div class="color-tags-wrap" id="manualColorWrap"></div>
+          <div class="color-add-row">
+            <input type="text" id="manualColorInput" placeholder="색상명 입력..." onkeydown="if(event.key==='Enter')addManualColor()">
+            <input type="color" id="manualColorPicker" value="#7C3AED">
+            <select id="manualColorRole"><option value="main">메인</option><option value="sub">서브</option></select>
+            <button onclick="addManualColor()">추가</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:500">💡 메인 = 넓은 면적 / 서브 = 포인트·패턴색 · 둘 다 검색에 반영돼요</div>
+        </div>
+        <div class="fg"><label>소재</label>
+          <select id="fMa"><option value="">선택</option><option>면(Cotton)</option><option>폴리에스터</option><option>울(Wool)</option><option>린넨</option><option>데님</option><option>가죽/인조가죽</option><option>니트</option><option>쉬폰/실크</option><option>기타</option></select>
+        </div>
+        <div class="fg"><label>핏</label>
+          <select id="fFit"><option value="">선택</option><option>슬림핏</option><option>레귤러핏</option><option>오버핏</option><option>와이드핏</option><option>루즈핏</option></select>
+        </div>
+        <div class="fg"><label>패턴</label>
+          <select id="fPattern"><option value="">선택</option><option>단색</option><option>스트라이프</option><option>체크</option><option>플로럴</option><option>그래픽/프린트</option><option>믹스/기타</option></select>
+        </div>
+        <div class="fg"><label>스타일</label>
+          <select id="fSt"><option value="">선택</option><option>캐주얼</option><option>포멀/오피스</option><option>스포츠</option><option>데이트/로맨틱</option><option>스트릿</option><option>미니멀</option><option>빈티지</option></select>
+        </div>
+        <div class="fg"><label>계절</label>
+          <select id="fSe"><option value="">선택</option><option>봄</option><option>여름</option><option>가을</option><option>겨울</option><option>사계절</option><option>봄/가을</option></select>
+        </div>
+        <div class="fg"><label>금액(원)</label><input type="number" id="fPr" placeholder="59000"></div>
+        <div class="fg"><label>구매 시기</label><input type="month" id="fDt"></div>
+        <div class="fg"><label>브랜드</label><input type="text" id="fBr" placeholder="자라, 유니클로..."></div>
+        <div class="fg"><label>상태</label>
+          <select id="fCn"><option value="">선택</option><option>새것</option><option>거의 새것</option><option>보통</option><option>약간 낡음</option><option>낡음</option></select>
+        </div>
+        <div class="fg amfull"><label>착용 상황</label><input type="text" id="fOc" placeholder="데일리, 오피스, 파티..."></div>
+        <div class="fg amfull"><label>구매 링크</label><input type="text" id="fUrl" placeholder="https://..."></div>
+        <div class="fg amfull"><label>메모</label><textarea id="fMe" placeholder="세탁법, 코디 팁..."></textarea></div>
+      </div>
+    </div>
+
+    <!-- AI 사진 분석 탭 -->
+    <div id="amScan" style="display:none">
+      <div class="scan-zone" id="scanZone" onclick="document.getElementById('scanFile').click()" style="min-height:160px;margin-bottom:12px">
+        <input type="file" id="scanFile" accept="image/*" style="display:none" onchange="onScanFile(event)">
+        <div id="scanPh" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted)">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--purple-light);display:flex;align-items:center;justify-content:center">
+            <svg width="22" height="22" fill="none" stroke="var(--purple)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <span style="font-size:13px;font-weight:600;color:var(--ink)">옷 사진 업로드</span>
+          <span style="font-size:11px">정면 사진이 가장 정확해요</span>
+        </div>
+      </div>
+      <button id="scanBtn" onclick="runScan()" disabled style="width:100%;padding:10px;background:var(--purple);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px;opacity:.5;display:flex;align-items:center;justify-content:center;gap:8px">
+        <span id="scanBtnTxt">사진을 먼저 업로드해주세요</span>
+      </button>
+      <div id="scanResult" style="display:none"></div>
+    </div>
+
+    <div class="am-foot">
+      <button class="am-cancel" onclick="closeAdd()">취소</button>
+      <button class="am-save" onclick="saveItem()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- PICKER MODAL -->
+<div class="pk-overlay" id="pkModal">
+  <div class="pk-modal">
+    <div class="pk-head"><span class="pk-tit" id="pkTit">옷 선택</span><button class="mclose" onclick="closePK()">×</button></div>
+    <input type="text" class="pk-search" id="pkSearch" placeholder="검색..." oninput="renderPK()">
+    <div class="pk-list" id="pkList"></div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+/* ════════════════════════════════════
+   DATA & CONSTANTS
+════════════════════════════════════ */
+const TREE=[
+  {id:'all',ico:'🗂️',lbl:'전체 보기',ch:[]},
+  {id:'tops-g',ico:'👕',lbl:'상의',ch:[{id:'top',ico:'👕',lbl:'티셔츠/셔츠'},{id:'knit',ico:'🧶',lbl:'니트/스웨터'},{id:'blouse',ico:'👚',lbl:'블라우스'}]},
+  {id:'bottoms-g',ico:'👖',lbl:'하의',ch:[{id:'bottom',ico:'👖',lbl:'바지'},{id:'skirt',ico:'🩱',lbl:'스커트'}]},
+  {id:'outers-g',ico:'🧥',lbl:'아우터',ch:[{id:'jacket',ico:'🧥',lbl:'재킷/점퍼'},{id:'coat',ico:'🥼',lbl:'코트'},{id:'cardigan',ico:'🧶',lbl:'가디건'}]},
+  {id:'dress-g',ico:'👗',lbl:'원피스',ch:[{id:'dress',ico:'👗',lbl:'원피스'},{id:'jumpsuit',ico:'🩱',lbl:'점프수트'}]},
+  {id:'shoes-g',ico:'👟',lbl:'신발',ch:[{id:'sneakers',ico:'👟',lbl:'스니커즈'},{id:'heels',ico:'👠',lbl:'구두/힐'},{id:'boots',ico:'👢',lbl:'부츠'},{id:'sandals',ico:'🩴',lbl:'샌들'}]},
+  {id:'acc-g',ico:'👜',lbl:'악세서리',ch:[{id:'bag',ico:'👜',lbl:'가방'},{id:'jewelry',ico:'💍',lbl:'주얼리'},{id:'hat',ico:'🧢',lbl:'모자'},{id:'belt',ico:'🔗',lbl:'벨트'}]},
+  {id:'inner-g',ico:'🩲',lbl:'이너웨어',ch:[{id:'inner',ico:'🩱',lbl:'이너웨어'},{id:'socks',ico:'🧦',lbl:'양말'}]},
+  {id:'sports-g',ico:'🏃',lbl:'스포츠',ch:[{id:'sports-top',ico:'👕',lbl:'스포츠 상의'},{id:'sports-bottom',ico:'🩳',lbl:'스포츠 하의'}]},
+];
+const GC={};TREE.forEach(p=>{if(p.ch.length)GC[p.id]=p.ch.map(c=>c.id);});
+const CF={};TREE.forEach(p=>{if(!p.ch.length)CF[p.id]={ico:p.ico,lbl:p.lbl};p.ch.forEach(c=>CF[c.id]={ico:c.ico,lbl:c.lbl});});
+
+const LZ_DEF=[
+  {id:'inner',ico:'🩱',lbl:'이너 (가장 안쪽)',desc:'속옷·이너·베이직티',color:'#BFDBFE',bg:'#EFF6FF',cats:['inner','underwear','top'],defVol:1,vp:[{l:'극세사',v:1},{l:'슬림 면티',v:2},{l:'두꺼운 면티',v:3}]},
+  {id:'shirt',ico:'👕',lbl:'상의 (중간층)',desc:'셔츠·맨투맨·블라우스',color:'#BBF7D0',bg:'#F0FDF4',cats:['top','knit','blouse','dress','jumpsuit'],defVol:2,vp:[{l:'얇은 셔츠',v:1},{l:'옥스퍼드',v:2},{l:'두꺼운 맨투맨',v:3}]},
+  {id:'knit',ico:'🧶',lbl:'니트 / 후디',desc:'니트·후드티·스웨터',color:'#FDE68A',bg:'#FFFBEB',cats:['knit','cardigan'],defVol:3,vp:[{l:'얇은 니트',v:2},{l:'일반 후드',v:3},{l:'빵빵한 후드',v:5}]},
+  {id:'outer',ico:'🧥',lbl:'아우터 (겉옷)',desc:'재킷·코트·패딩',color:'#FCA5A5',bg:'#FEF2F2',cats:['jacket','coat'],defVol:3,vp:[{l:'얇은 재킷',v:2},{l:'코트',v:3},{l:'두꺼운 패딩',v:5}]},
+  {id:'bottom',ico:'👖',lbl:'하의',desc:'바지·스커트',color:'#C4B5FD',bg:'#F5F3FF',cats:['bottom','skirt','sports-bottom'],defVol:2,vp:[{l:'슬림핏',v:1},{l:'청바지',v:2},{l:'와이드 패딩',v:4}]},
+  {id:'shoes',ico:'👟',lbl:'신발',desc:'스니커즈·구두·부츠',color:'#6EE7B7',bg:'#ECFDF5',cats:['sneakers','heels','boots','sandals'],defVol:1,vp:[{l:'슬리퍼',v:1},{l:'스니커즈',v:2},{l:'두꺼운 부츠',v:3}]},
+  {id:'acc',ico:'👜',lbl:'악세서리',desc:'가방·모자·주얼리',color:'#FCD34D',bg:'#FFFBEB',cats:['bag','hat','jewelry','belt','socks'],defVol:1,vp:[]},
+];
+const LZM=Object.fromEntries(LZ_DEF.map(z=>[z.id,z]));
+const VL=['','얇음','슬림','보통','두꺼움','매우두꺼움'];
+const VPX=[0,2,4,7,11,18];
+const COLOR_HEX={'블랙':'#1a1a1a','화이트':'#f5f5f5','그레이':'#9ca3af','네이비':'#1e3a8a','블루':'#3b82f6','스카이블루':'#7dd3fc','하늘색':'#bae6fd','코발트블루':'#1d4ed8','레드':'#ef4444','버건디':'#7f1d1d','와인':'#9f1239','핑크':'#f472b6','라이트핑크':'#fce7f3','옐로우':'#facc15','머스타드':'#ca8a04','오렌지':'#f97316','코랄':'#fb7185','그린':'#22c55e','카키':'#713f12','올리브':'#4d7c0f','민트':'#6ee7b7','세이지':'#84cc16','퍼플':'#a855f7','라벤더':'#c4b5fd','바이올렛':'#7c3aed','브라운':'#92400e','카멜':'#b45309','베이지':'#d4a96a','크림':'#fef3c7','아이보리':'#fffbeb','실버':'#e5e7eb','골드':'#fbbf24','인디고':'#4f46e5','청록':'#0891b2','터콰이즈':'#06b6d4','오프화이트':'#f0ede8','연그레이':'#d1d5db','차콜':'#374151','스모키':'#6b7280'};
+
+function getHex(name){const l=name.toLowerCase().trim();for(const[k,v]of Object.entries(COLOR_HEX)){if(l.includes(k.toLowerCase()))return v;}return'#9ca3af';}
+function getTxt(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return(r*299+g*587+b*114)/1000>160?'#1a1a1a':'#ffffff';}
+
+let clothes=[],curSel='all',openGroups=new Set(['tops-g','bottoms-g']),sbCol=false;
+let filters={season:new Set(),material:new Set(),style:new Set()};
+let editId=null,curId=null,manualImgData=null,avData=null;
+let layers={};LZ_DEF.forEach(z=>{layers[z.id]={on:false,vol:z.defVol,items:[]};});
+let pkZone=null;
+let manualColors=[];
+let scanImgData=null,scanMime='image/jpeg';
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+
+/* ════ PERSIST ════ */
+function save(){try{localStorage.setItem('mw_v7',JSON.stringify(clothes));}catch(e){}}
+function load(){try{const d=localStorage.getItem('mw_v7');if(d){clothes=JSON.parse(d);return;}}catch(e){}seed();}
+function seed(){
+  clothes=[
+    {id:uid(),name:'화이트 베이직 티셔츠',cat:'top',sleeve:'반팔',colors:[{name:'화이트',hex:'#f5f5f5',role:'main'}],material:'면(Cotton)',fit:'레귤러핏',pattern:'단색',style:'캐주얼',season:'사계절',price:19000,date:'2024-03',brand:'유니클로',condition:'거의 새것',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'네이비&화이트 스트라이프 셔츠',cat:'top',sleeve:'긴팔',colors:[{name:'네이비',hex:'#1e3a8a',role:'main'},{name:'화이트',hex:'#f5f5f5',role:'sub'}],material:'면(Cotton)',fit:'레귤러핏',pattern:'스트라이프',style:'포멀/오피스',season:'봄/가을',price:45000,date:'2024-01',brand:'무신사스탠다드',condition:'새것',occasion:'오피스',url:'',memo:'',img:null},
+    {id:uid(),name:'블랙 슬림 청바지',cat:'bottom',sleeve:'해당없음',colors:[{name:'블랙',hex:'#1a1a1a',role:'main'}],material:'데님',fit:'슬림핏',pattern:'단색',style:'캐주얼',season:'사계절',price:65000,date:'2023-09',brand:'자라',condition:'보통',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'베이지 오버핏 코트',cat:'coat',sleeve:'긴팔',colors:[{name:'베이지',hex:'#d4a96a',role:'main'}],material:'울(Wool)',fit:'오버핏',pattern:'단색',style:'미니멀',season:'겨울',price:189000,date:'2023-11',brand:'COS',condition:'거의 새것',occasion:'오피스, 데이트',url:'',memo:'드라이클리닝',img:null},
+    {id:uid(),name:'그레이 오버핏 니트',cat:'knit',sleeve:'긴팔',colors:[{name:'그레이',hex:'#9ca3af',role:'main'}],material:'울(Wool)',fit:'오버핏',pattern:'단색',style:'캐주얼',season:'봄/가을',price:59000,date:'2023-08',brand:'유니클로',condition:'보통',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'화이트 뉴발란스 스니커즈',cat:'sneakers',sleeve:'해당없음',colors:[{name:'화이트',hex:'#f5f5f5',role:'main'},{name:'그레이',hex:'#9ca3af',role:'sub'}],material:'기타',fit:'레귤러핏',pattern:'단색',style:'캐주얼',season:'봄/가을',price:89000,date:'2024-02',brand:'뉴발란스',condition:'거의 새것',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'블랙 레더 재킷',cat:'jacket',sleeve:'긴팔',colors:[{name:'블랙',hex:'#1a1a1a',role:'main'}],material:'가죽/인조가죽',fit:'레귤러핏',pattern:'단색',style:'스트릿',season:'봄/가을',price:155000,date:'2023-10',brand:'자라',condition:'거의 새것',occasion:'데이트',url:'',memo:'',img:null},
+    {id:uid(),name:'빵빵한 다운 패딩',cat:'coat',sleeve:'긴팔',colors:[{name:'블랙',hex:'#1a1a1a',role:'main'}],material:'폴리에스터',fit:'오버핏',pattern:'단색',style:'캐주얼',season:'겨울',price:220000,date:'2023-12',brand:'노스페이스',condition:'거의 새것',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'블루&화이트 후드 스웨트',cat:'knit',sleeve:'긴팔',colors:[{name:'블루',hex:'#3b82f6',role:'main'},{name:'화이트',hex:'#f5f5f5',role:'sub'}],material:'면(Cotton)',fit:'오버핏',pattern:'그래픽/프린트',style:'캐주얼',season:'봄/가을',price:79000,date:'2023-09',brand:'챔피온',condition:'보통',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'인디고 와이드 청바지',cat:'bottom',sleeve:'해당없음',colors:[{name:'인디고',hex:'#4f46e5',role:'main'}],material:'데님',fit:'와이드핏',pattern:'단색',style:'캐주얼',season:'봄/가을',price:89000,date:'2024-01',brand:'리바이스',condition:'새것',occasion:'데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'베이지 크로스백',cat:'bag',sleeve:'해당없음',colors:[{name:'베이지',hex:'#d4a96a',role:'main'}],material:'가죽/인조가죽',fit:'레귤러핏',pattern:'단색',style:'미니멀',season:'사계절',price:135000,date:'2023-10',brand:'마르헨제이',condition:'거의 새것',occasion:'데이트, 데일리',url:'',memo:'',img:null},
+    {id:uid(),name:'블랙&레드 체크 플란넬 셔츠',cat:'top',sleeve:'긴팔',colors:[{name:'블랙',hex:'#1a1a1a',role:'main'},{name:'레드',hex:'#ef4444',role:'sub'}],material:'면(Cotton)',fit:'오버핏',pattern:'체크',style:'스트릿',season:'가을',price:55000,date:'2023-10',brand:'H&M',condition:'보통',occasion:'데일리, 캠핑',url:'',memo:'',img:null},
+  ];
+  save();
+}
+
+/* ════ PAGE ════ */
+function goPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const t=document.getElementById('tab-'+p);if(t)t.classList.add('active');
+  if(p==='home')initHome();
+  if(p==='wardrobe')renderWD();
+  if(p==='fitting')renderLayerZones();
+  if(p==='stats')renderStats();
+}
+
+/* ════ HOME ════ */
+function initHome(){
+  const now=new Date();
+  const days=['일','월','화','수','목','금','토'];
+  document.getElementById('hDate').textContent=`${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
+  const h=now.getHours();
+  document.getElementById('hGreet').textContent=h<12?'좋은 아침이에요 ☀️':h<18?'좋은 오후에요 🌤️':'좋은 저녁이에요 🌙';
+  const ws=[{ico:'☀️',desc:'맑음',hi:18,lo:8},{ico:'⛅',desc:'구름조금',hi:16,lo:7},{ico:'🌧️',desc:'비',hi:13,lo:9},{ico:'🌤️',desc:'맑음',hi:20,lo:10},{ico:'☁️',desc:'흐림',hi:15,lo:8},{ico:'⛅',desc:'구름많음',hi:17,lo:9},{ico:'☀️',desc:'맑음',hi:22,lo:11}];
+  document.getElementById('weatherGrid').innerHTML=Array.from({length:7},(_,i)=>{
+    const d=new Date(now);d.setDate(d.getDate()+i);const w=ws[i%7];
+    return`<div class="wcard"><div class="wday">${i===0?'오늘':i===1?'내일':days[d.getDay()]}</div><div class="wicon">${w.ico}</div><div class="wtemp">${w.hi}°<span style="color:var(--muted);font-size:11px"> ${w.lo}°</span></div><div class="wdesc">${w.desc}</div></div>`;
+  }).join('');
+  const total=clothes.length,val=clothes.reduce((a,c)=>a+(Number(c.price)||0),0);
+  const sc={};clothes.forEach(c=>{if(c.season)sc[c.season]=(sc[c.season]||0)+1;});const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
+  const newI=clothes.filter(c=>c.condition==='새것'||c.condition==='거의 새것').length;
+  document.getElementById('briefRows').innerHTML=[['전체 아이템',total+'개'],['총 가치','₩'+Math.round(val/1000)+'K'],['주요 계절',ts?ts[0]:'-'],['새것/거의새것',newI+'개']].map(([l,v])=>`<div class="brow"><span>${l}</span><span class="bval">${v}</span></div>`).join('');
+  document.getElementById('newsEl').innerHTML=[{t:'2025 SS 트렌드: 모노톤 레이어드가 대세',tm:'2시간 전'},{t:'올 봄 필수: 오버사이즈 리넨 셔츠 & 와이드 팬츠',tm:'4시간 전'},{t:'미니멀리즘의 귀환 — 클린 실루엣이 핵심',tm:'6시간 전'},{t:'지속 가능한 패션: 빈티지 쇼핑 트렌드 급부상',tm:'1일 전'}].map(n=>`<div class="news-item"><div class="ndot"></div><div><div class="ntext">${n.t}</div><div class="ntime">${n.tm}</div></div></div>`).join('');
+  runHomeAI(ws[0]);
+}
+async function runHomeAI(w){
+  const box=document.getElementById('aiRec');
+  const wlist=clothes.slice(0,5).map(c=>`${c.name}(${(c.colors||[]).map(x=>x.name).join('&')},${c.season||''})`).join(',');
+  const prompt=`오늘 날씨: ${w.ico}${w.desc} 최고${w.hi}°C 최저${w.lo}°C\n내 옷장: ${wlist||'없음'}\n\n날씨에 맞는 오늘의 스타일링을 구체적으로 2-3줄로 친근하게 추천해주세요. 이모지 적절히 사용.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:250,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');
+  }catch(e){box.innerHTML='☀️ 오늘 날씨에 맞게 레이어드를 시도해보세요! 얇은 이너에 재킷이나 가디건을 겹쳐 입으면 온도 조절이 쉬워요.';}
+}
+
+/* ════ SIDEBAR ════ */
+function togSB(){sbCol=!sbCol;document.getElementById('sidebar').classList.toggle('col',sbCol);}
+function getCnt(id){if(id==='all')return clothes.length;if(GC[id])return GC[id].reduce((a,cid)=>a+clothes.filter(c=>c.cat===cid).length,0);return clothes.filter(c=>c.cat===id).length;}
+function renderTree(){
+  document.getElementById('treeNav').innerHTML=TREE.map(p=>{
+    const cnt=getCnt(p.id),isG=p.ch.length>0,isOpen=openGroups.has(p.id),isA=curSel===p.id;
+    if(!isG)return`<div><button class="tp ${isA?'act':''}" onclick="setSel('${p.id}')"><div class="tpi"><span class="tico">${p.ico}</span><span class="tlbl">${p.lbl}</span><span class="tcnt">${cnt}</span></div></button></div>`;
+    const ch=p.ch.map(c=>{const cc=getCnt(c.id),ca=curSel===c.id;return`<div class="tc ${ca?'act':''}" onclick="setSel('${c.id}')"><span style="font-size:13px">${c.ico}</span><span style="flex:1;font-weight:500">${c.lbl}</span><span class="tc-cnt">${cc}</span></div>`;}).join('');
+    return`<div><button class="tp ${isA?'act':''}" onclick="togGrp('${p.id}')"><div class="tpi"><span class="tico">${p.ico}</span><span class="tlbl">${p.lbl}</span><span class="tcnt">${cnt}</span><span class="tarr ${isOpen?'open':''}">▶</span></div></button><div class="tch ${isOpen?'open':''}">${ch}</div></div>`;
+  }).join('');
+}
+function togGrp(id){if(openGroups.has(id))openGroups.delete(id);else openGroups.add(id);renderTree();}
+function setSel(id){curSel=id;renderWD();}
+function renderQTabs(){
+  const qc=[{id:'all',ico:'🗂️',l:'전체'},{id:'tops-g',ico:'👕',l:'상의'},{id:'bottoms-g',ico:'👖',l:'하의'},{id:'outers-g',ico:'🧥',l:'아우터'},{id:'dress-g',ico:'👗',l:'원피스'},{id:'shoes-g',ico:'👟',l:'신발'},{id:'acc-g',ico:'👜',l:'악세서리'},{id:'inner-g',ico:'🩲',l:'이너'},{id:'sports-g',ico:'🏃',l:'스포츠'}];
+  document.getElementById('qtabs').innerHTML=qc.map(c=>`<button class="qt ${curSel===c.id||(GC[c.id]&&GC[c.id].includes(curSel))?'act':''}" onclick="setSel('${c.id}')">${c.ico} ${c.l}</button>`).join('');
+}
+
+/* ════ FILTERS ════ */
+function togFP(){document.getElementById('fpanel').classList.toggle('open');document.getElementById('fpBtn').classList.toggle('act');}
+function tFC(el){el.classList.toggle('on');const g=el.dataset.g,v=el.dataset.v;if(filters[g].has(v))filters[g].delete(v);else filters[g].add(v);renderWD();}
+function setP(a,b){document.getElementById('pMin').value=a;document.getElementById('pMax').value=b;renderWD();}
+function resetF(){['season','material','style'].forEach(g=>{filters[g]=new Set();document.querySelectorAll(`.fpc[data-g="${g}"]`).forEach(el=>el.classList.remove('on'));});document.getElementById('pMin').value='';document.getElementById('pMax').value='';document.getElementById('searchQ').value='';renderWD();}
+function cntF(){let n=0;['season','material','style'].forEach(g=>n+=filters[g].size);if(document.getElementById('pMin').value||document.getElementById('pMax').value)n++;return n;}
+function renderAF(){
+  const chips=[];
+  ['season','material','style'].forEach(g=>filters[g].forEach(v=>chips.push(`<span class="afc">${v}<span class="afx" onclick="rmF('${g}','${v}')">×</span></span>`)));
+  const pm=document.getElementById('pMin').value,px=document.getElementById('pMax').value;
+  if(pm||px)chips.push(`<span class="afc">${pm?'₩'+Number(pm).toLocaleString():''}~${px?'₩'+Number(px).toLocaleString():''}<span class="afx" onclick="clrP()">×</span></span>`);
+  document.getElementById('afrow').innerHTML=chips.join('');
+  const n=cntF();const b=document.getElementById('fbadge');b.textContent=n;b.style.display=n?'inline':'none';
+}
+function rmF(g,v){filters[g].delete(v);document.querySelectorAll(`.fpc[data-g="${g}"][data-v="${v}"]`).forEach(el=>el.classList.remove('on'));renderWD();}
+function clrP(){document.getElementById('pMin').value='';document.getElementById('pMax').value='';renderWD();}
+
+function getFiltered(){
+  const q=(document.getElementById('searchQ').value||'').toLowerCase();
+  const pm=Number(document.getElementById('pMin').value)||0,px=Number(document.getElementById('pMax').value)||Infinity;
+  const sort=document.getElementById('ssort').value;
+  let vCats=null;
+  if(curSel!=='all'){if(GC[curSel])vCats=new Set(GC[curSel]);else vCats=new Set([curSel]);}
+  let list=clothes.filter(c=>{
+    if(vCats&&!vCats.has(c.cat))return false;
+    const colorStr=(c.colors||[]).map(x=>x.name).join(' ');
+    if(q&&![c.name,colorStr,c.brand,c.style,c.occasion,c.material,c.pattern,c.fit].join(' ').toLowerCase().includes(q))return false;
+    if(filters.season.size&&!filters.season.has(c.season))return false;
+    if(filters.material.size&&!filters.material.has(c.material))return false;
+    if(filters.style.size&&!filters.style.has(c.style))return false;
+    const p=Number(c.price)||0;if(pm&&p<pm)return false;if(px!==Infinity&&p>px)return false;
+    return true;
+  });
+  if(sort==='newest')list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  else if(sort==='oldest')list.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  else if(sort==='phi')list.sort((a,b)=>(Number(b.price)||0)-(Number(a.price)||0));
+  else if(sort==='plo')list.sort((a,b)=>(Number(a.price)||0)-(Number(b.price)||0));
+  else if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));
+  return list;
+}
+
+function renderWD(){
+  renderTree();renderQTabs();renderAF();
+  const list=getFiltered();
+  document.getElementById('rinfo').textContent=`${list.length}개 표시 중 (전체 ${clothes.length}개)`;
+  const COND={'새것':'cn','거의 새것':'cg','보통':'cm','약간 낡음':'co','낡음':'co'};
+  const grid=document.getElementById('cgrid');
+  if(!list.length){grid.innerHTML='<div class="empty-state"><div>🔍</div><div>조건에 맞는 옷이 없어요</div></div>';return;}
+  grid.innerHTML=list.map(c=>{
+    const ci=CF[c.cat]||{ico:'👚'};
+    const colors=c.colors||[];
+    const colorDotsHtml=colors.length?`<div class="color-dots">${colors.map(cl=>`<div class="cdot" style="background:${cl.hex}" title="${cl.name}(${cl.role==='main'?'메인':'서브'})"></div>`).join('')}</div>`:'';
+    return`<div class="ccard" onclick="openDet('${c.id}')">
+      <div class="cthumb">${c.img?`<img src="${c.img}">`:`<span>${ci.ico}</span>`}${c.condition?`<span class="cbadge ${COND[c.condition]||''}">${c.condition}</span>`:''}</div>
+      <div class="cbody">
+        <div class="cname">${c.name}</div>
+        ${colorDotsHtml}
+        <div class="ctags">
+          ${c.sleeve&&c.sleeve!=='해당없음'?`<span class="ctag" style="background:#F5F3FF;color:#5B21B6">${c.sleeve}</span>`:''}
+          ${c.season?`<span class="ctag ts">${c.season}</span>`:''}
+          ${c.style?`<span class="ctag tst">${c.style}</span>`:''}
+          ${c.material?`<span class="ctag tm">${c.material.split('(')[0]}</span>`:''}
+        </div>
+        <div class="cprice">${c.price?`<strong>₩${Number(c.price).toLocaleString()}</strong>`:''}${c.brand?` · ${c.brand}`:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const val=clothes.reduce((a,c)=>a+(Number(c.price)||0),0);
+  const sc={};clothes.forEach(c=>{if(c.season)sc[c.season]=(sc[c.season]||0)+1;});const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
+  const stC={};clothes.forEach(c=>{if(c.style)stC[c.style]=(stC[c.style]||0)+1;});const tst=Object.entries(stC).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('stAll').textContent=clothes.length;
+  document.getElementById('stVal').textContent='₩'+Math.round(val/1000)+'K';
+  document.getElementById('stSea').textContent=ts?ts[0]:'-';
+  document.getElementById('stSty').textContent=tst?tst[0]:'-';
+}
+
+/* ════ DETAIL ════ */
+function openDet(id){
+  curId=id;const c=clothes.find(x=>x.id===id);if(!c)return;
+  const ci=CF[c.cat]||{ico:'👚',lbl:c.cat};
+  document.getElementById('mhero').innerHTML=c.img?`<img src="${c.img}">`:`<span style="font-size:72px">${ci.ico}</span>`;
+  document.getElementById('mname').textContent=c.name;
+  document.getElementById('msub2').textContent=[c.brand,c.sleeve&&c.sleeve!=='해당없음'?c.sleeve:''].filter(Boolean).join(' · ');
+  const CC={'새것':'mtg','거의 새것':'mtb','보통':'mta','약간 낡음':'mtr','낡음':'mtr'};
+  const colors=c.colors||[];
+  const colorTagsHtml=colors.map(cl=>`<span class="mt" style="background:${cl.hex}22;color:${cl.hex};border:1px solid ${cl.hex}44">${cl.name}${cl.role==='main'?' ★':''}</span>`).join('');
+  document.getElementById('mtags').innerHTML=[
+    `<span class="mt mtp">${ci.ico} ${ci.lbl}</span>`,
+    colorTagsHtml,
+    c.season?`<span class="mt mtb">${c.season}</span>`:'',
+    c.style?`<span class="mt mta">${c.style}</span>`:'',
+    c.material?`<span class="mt mtg">${c.material}</span>`:'',
+    c.fit?`<span class="mt" style="background:#F5F3FF;color:#5B21B6">${c.fit}</span>`:'',
+    c.pattern&&c.pattern!=='단색'?`<span class="mt" style="background:#FFF7ED;color:#92400E">${c.pattern}</span>`:'',
+    c.condition?`<span class="mt ${CC[c.condition]||'mta'}">${c.condition}</span>`:'',
+  ].filter(Boolean).join('');
+  const mainColors=colors.filter(x=>x.role==='main').map(x=>x.name).join(', ');
+  const subColors=colors.filter(x=>x.role==='sub').map(x=>x.name).join(', ');
+  const infos=[
+    ['메인 색상',mainColors||'-'],
+    ['서브 색상',subColors||'없음'],
+    ['소매 길이',c.sleeve],['사이즈',c.size],['소재',c.material],
+    ['핏',c.fit],['패턴',c.pattern],['계절',c.season],
+    ['스타일',c.style],['상태',c.condition],['브랜드',c.brand],
+    ['금액',c.price?'₩'+Number(c.price).toLocaleString():''],
+    ['구매',c.date],['상황',c.occasion]
+  ].filter(r=>r[1]&&r[1]!=='해당없음');
+  document.getElementById('migrid').innerHTML=infos.map(([l,v])=>`<div class="ic"><div class="icl">${l}</div><div class="icv">${v}</div></div>`).join('');
+  const mo=document.getElementById('mmemo');if(c.memo){mo.textContent=c.memo;mo.style.display='block';}else mo.style.display='none';
+  const ml=document.getElementById('mlink');if(c.url){ml.href=c.url;ml.style.display='inline-flex';}else ml.style.display='none';
+  document.getElementById('detailModal').classList.add('open');
+}
+function closeDet(){document.getElementById('detailModal').classList.remove('open');}
+function delItem(id){if(!confirm('삭제할까요?'))return;clothes=clothes.filter(c=>c.id!==id);save();closeDet();renderWD();}
+function addToLayerFromDet(id){
+  const c=clothes.find(x=>x.id===id);if(!c)return;
+  const z=LZ_DEF.find(z=>z.cats.includes(c.cat));
+  if(z&&!layers[z.id].items.find(x=>x.id===id)){layers[z.id].items.push(c);layers[z.id].on=true;}
+  closeDet();goPage('fitting');
+}
+
+/* ════ ADD/EDIT ════ */
+function openAdd(id){
+  editId=id||null;manualImgData=null;manualColors=[];scanImgData=null;
+  closeDet();
+  document.getElementById('amTit').textContent=id?'옷 수정':'새 옷 추가';
+  switchAmTab('manual');
+  if(id){
+    const c=clothes.find(x=>x.id===id);if(!c)return;
+    document.getElementById('fN').value=c.name||'';
+    document.getElementById('fCa').value=c.cat||'';
+    document.getElementById('fSleeve').value=c.sleeve||'';
+    document.getElementById('fMa').value=c.material||'';
+    document.getElementById('fFit').value=c.fit||'';
+    document.getElementById('fPattern').value=c.pattern||'';
+    document.getElementById('fSt').value=c.style||'';
+    document.getElementById('fSe').value=c.season||'';
+    document.getElementById('fPr').value=c.price||'';
+    document.getElementById('fDt').value=c.date||'';
+    document.getElementById('fBr').value=c.brand||'';
+    document.getElementById('fCn').value=c.condition||'';
+    document.getElementById('fOc').value=c.occasion||'';
+    document.getElementById('fUrl').value=c.url||'';
+    document.getElementById('fMe').value=c.memo||'';
+    manualColors=c.colors?JSON.parse(JSON.stringify(c.colors)):[];
+    if(c.img){manualImgData=c.img;resetManualImgZone(true);}else resetManualImgZone(false);
+  } else {
+    ['fN','fBr','fOc','fUrl','fMe'].forEach(i=>document.getElementById(i).value='');
+    ['fCa','fSleeve','fMa','fFit','fPattern','fSt','fSe','fDt','fCn'].forEach(i=>document.getElementById(i).value='');
+    resetManualImgZone(false);
+  }
+  renderManualColors();
+  document.getElementById('addModal').classList.add('open');
+}
+function resetManualImgZone(hasImg){
+  const z=document.getElementById('manualImgZone');
+  if(hasImg&&manualImgData){
+    z.innerHTML=`<input type="file" id="manualImgFile" accept="image/*" style="display:none" onchange="prevManualImg(event)"><img src="${manualImgData}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface)">`;
+  } else {
+    z.innerHTML=`<input type="file" id="manualImgFile" accept="image/*" style="display:none" onchange="prevManualImg(event)"><div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span style="font-size:12px;font-weight:500">클릭하여 이미지 업로드</span></div>`;
+  }
+}
+function prevManualImg(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{manualImgData=ev.target.result;resetManualImgZone(true);};r.readAsDataURL(f);
+}
+function closeAdd(){document.getElementById('addModal').classList.remove('open');}
+function switchAmTab(t){
+  document.getElementById('tab-manual').classList.toggle('active',t==='manual');
+  document.getElementById('tab-scan').classList.toggle('active',t==='scan');
+  document.getElementById('amManual').style.display=t==='manual'?'block':'none';
+  document.getElementById('amScan').style.display=t==='scan'?'block':'none';
+}
+
+/* Color management */
+function getHex2(name){return getHex(name);}
+function renderManualColors(){
+  document.getElementById('manualColorWrap').innerHTML=manualColors.map((c,i)=>{
+    const txt=getTxt(c.hex);
+    return`<span class="color-tag" style="background:${c.hex};color:${txt}">${c.name}<span style="font-size:9px;opacity:.7;margin-left:3px">(${c.role==='main'?'메인':'서브'})</span><span class="cx" onclick="removeManualColor(${i})">×</span></span>`;
+  }).join('');
+}
+function addManualColor(){
+  const inp=document.getElementById('manualColorInput');
+  const picker=document.getElementById('manualColorPicker');
+  const role=document.getElementById('manualColorRole').value;
+  const name=inp.value.trim();if(!name)return;
+  const autoHex=getHex(name);
+  const hex=autoHex!=='#9ca3af'?autoHex:picker.value;
+  manualColors.push({name,hex,role});
+  renderManualColors();inp.value='';inp.focus();
+}
+function removeManualColor(i){manualColors.splice(i,1);renderManualColors();}
+
+function saveItem(){
+  const name=document.getElementById('fN').value.trim();
+  if(!name){alert('이름을 입력해주세요');return;}
+  const obj={
+    id:editId||uid(),name,
+    cat:document.getElementById('fCa').value,
+    sleeve:document.getElementById('fSleeve').value,
+    colors:manualColors.length?manualColors:[{name:'미지정',hex:'#9ca3af',role:'main'}],
+    material:document.getElementById('fMa').value,
+    fit:document.getElementById('fFit').value,
+    pattern:document.getElementById('fPattern').value,
+    style:document.getElementById('fSt').value,
+    season:document.getElementById('fSe').value,
+    price:document.getElementById('fPr').value,
+    date:document.getElementById('fDt').value,
+    brand:document.getElementById('fBr').value,
+    condition:document.getElementById('fCn').value,
+    occasion:document.getElementById('fOc').value,
+    url:document.getElementById('fUrl').value,
+    memo:document.getElementById('fMe').value,
+    img:manualImgData||null,
+  };
+  if(editId){const i=clothes.findIndex(c=>c.id===editId);if(i>=0)clothes[i]=obj;}else clothes.unshift(obj);
+  save();closeAdd();renderWD();
+}
+
+/* ════ AI SCAN ════ */
+function onScanFile(e){
+  const f=e.target.files[0];if(!f)return;
+  scanMime=f.type||'image/jpeg';
+  const r=new FileReader();
+  r.onload=ev=>{
+    scanImgData=ev.target.result;
+    const zone=document.getElementById('scanZone');
+    document.getElementById('scanPh').style.display='none';
+    let img=zone.querySelector('img');
+    if(!img){img=new Image();img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface)';zone.appendChild(img);}
+    img.src=scanImgData;
+    const btn=document.getElementById('scanBtn');btn.disabled=false;btn.style.opacity='1';
+    document.getElementById('scanBtnTxt').textContent='✨ AI로 자동 분석하기';
+  };r.readAsDataURL(f);
+}
+async function runScan(){
+  if(!scanImgData)return;
+  const btn=document.getElementById('scanBtn');btn.disabled=true;
+  document.getElementById('scanBtnTxt').innerHTML='<span class="spin"></span>AI 분석 중...';
+  const prompt=`이 옷 사진을 분석해서 아래 JSON 형식으로만 응답해주세요. 다른 텍스트 없이 순수 JSON만 출력하세요.
+{
+  "name": "옷 이름 (예: 네이비&화이트 스트라이프 반팔 셔츠)",
+  "category": "top/knit/blouse/bottom/skirt/jacket/coat/cardigan/dress/jumpsuit/sneakers/heels/boots/sandals/bag/jewelry/hat/belt/inner/sports-top/sports-bottom 중 하나",
+  "sleeve": "민소매/반팔/7부/긴팔/해당없음 중 하나",
+  "colors": [
+    {"name": "메인 색상명 한국어", "hex": "#헥스코드", "role": "main"},
+    {"name": "서브 색상명 있다면", "hex": "#헥스코드", "role": "sub"}
+  ],
+  "material": "면(Cotton)/폴리에스터/울(Wool)/린넨/데님/가죽/니트/쉬폰/실크/기타 중 하나",
+  "fit": "슬림핏/레귤러핏/오버핏/와이드핏/루즈핏 중 하나",
+  "pattern": "단색/스트라이프/체크/플로럴/그래픽/프린트/믹스/기타 중 하나",
+  "style": "캐주얼/포멀/오피스/스포츠/데이트/스트릿/미니멀/빈티지/아웃도어 중 하나",
+  "season": "봄/여름/가을/겨울/사계절/봄/가을 중 하나",
+  "confidence": 85,
+  "note": "색상 판단 이유와 불확실한 부분을 2문장으로"
+}
+색상: 가장 넓은 면적=main, 패턴/포인트색=sub. 블루&화이트 혼합이면 더 넓은 쪽이 main.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:scanMime,data:scanImgData.split(',')[1]}},{type:'text',text:prompt}]}]})});
+    const data=await res.json();
+    let raw=data.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
+    const result=JSON.parse(raw);
+    applyScanResult(result);
+  }catch(e){
+    document.getElementById('scanResult').style.display='block';
+    document.getElementById('scanResult').innerHTML=`<div style="color:var(--red);font-size:12px;padding:10px;background:#FEF2F2;border-radius:var(--r)">분석 중 오류가 발생했어요: ${e.message}</div>`;
+  }
+  btn.disabled=false;document.getElementById('scanBtnTxt').textContent='🔄 다시 분석하기';
+}
+function applyScanResult(r){
+  const conf=r.confidence||75;
+  document.getElementById('scanResult').style.display='block';
+  document.getElementById('scanResult').innerHTML=`
+    <div class="ai-result-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>AI 분석 완료 — 아래 항목을 확인하고 저장하세요</div>
+    <div class="conf-bar-row"><span class="conf-label">신뢰도</span><div class="conf-track"><div class="conf-fill" style="width:${conf}%"></div></div><span class="conf-pct">${conf}%</span></div>
+    ${r.note?`<div class="ai-note"><div class="ai-note-t">🤖 AI 분석 노트</div>${r.note}</div>`:''}
+    <p style="font-size:12px;color:var(--muted);font-weight:500;margin-bottom:8px">✓ 직접 입력 탭으로 자동으로 채워졌어요. 확인 후 저장하세요.</p>
+  `;
+  // 직접입력 탭에 자동으로 채우기
+  switchAmTab('manual');
+  document.getElementById('fN').value=r.name||'';
+  document.getElementById('fCa').value=r.category||'';
+  document.getElementById('fSleeve').value=r.sleeve||'';
+  document.getElementById('fMa').value=r.material||'';
+  document.getElementById('fFit').value=r.fit||'';
+  document.getElementById('fPattern').value=r.pattern||'';
+  document.getElementById('fSt').value=r.style||'';
+  document.getElementById('fSe').value=r.season||'';
+  manualImgData=scanImgData;
+  resetManualImgZone(true);
+  manualColors=[];
+  if(r.colors&&r.colors.length){r.colors.forEach(c=>{manualColors.push({name:c.name,hex:c.hex||getHex(c.name),role:c.role||'main'});});}
+  renderManualColors();
+}
+
+/* ════ FITTING ════ */
+function applyPreset(p){
+  const PR={
+    summer:{inner:{on:true,vol:1},shirt:{on:true,vol:1},knit:{on:false,vol:2},outer:{on:false,vol:2},bottom:{on:true,vol:1},shoes:{on:false,vol:1},acc:{on:false,vol:1}},
+    fall:  {inner:{on:true,vol:1},shirt:{on:true,vol:2},knit:{on:true,vol:3},outer:{on:true,vol:2},bottom:{on:true,vol:2},shoes:{on:false,vol:2},acc:{on:false,vol:1}},
+    winter:{inner:{on:true,vol:2},shirt:{on:true,vol:3},knit:{on:true,vol:4},outer:{on:true,vol:5},bottom:{on:true,vol:3},shoes:{on:false,vol:2},acc:{on:false,vol:1}},
+    overfit:{inner:{on:true,vol:3},shirt:{on:true,vol:4},knit:{on:true,vol:5},outer:{on:true,vol:5},bottom:{on:true,vol:4},shoes:{on:false,vol:2},acc:{on:false,vol:1}},
+  };
+  const pr=PR[p];Object.keys(pr).forEach(id=>{layers[id].on=pr[id].on;layers[id].vol=pr[id].vol;});
+  renderLayerZones();updateVolume();
+}
+function renderLayerZones(){
+  document.getElementById('layerZones').innerHTML=LZ_DEF.map(z=>{
+    const L=layers[z.id],isAct=L.on||L.items.length>0,isOpen=isAct;
+    const vpHTML=z.vp.map(p=>`<button class="vpbtn" onclick="setZoneVol('${z.id}',${p.v})">${p.l}</button>`).join('');
+    const itemsHTML=L.items.map((c,i)=>{const ci=CF[c.cat]||{ico:'👚'};return`<div class="lzitem"><span style="font-size:12px">${c.img?`<img src="${c.img}" style="width:14px;height:14px;object-fit:cover;border-radius:2px">`:ci.ico}</span><span class="lzname">${c.name}</span><span class="lzord">L${i+1}</span><button class="lzrm" onclick="rmFromZone('${z.id}','${c.id}')">×</button></div>`;}).join('');
+    return`<div class="lzone ${isAct?'act':''}" id="lz-${z.id}">
+      <div class="lzhead" onclick="togLZ('${z.id}')">
+        <span class="lzico">${z.ico}</span>
+        <div style="flex:1;min-width:0"><div class="lzlbl">${z.lbl}</div><div style="font-size:9px;color:var(--muted);font-weight:500">${z.desc}</div></div>
+        ${L.items.length?`<span class="lzbadge">${L.items.length}</span>`:''}
+        <span class="lzarr ${isOpen?'open':''}">▶</span>
+      </div>
+      <div class="lzbody ${isOpen?'open':''}">
+        <div class="vol-row">
+          <span class="vol-lbl">두께</span>
+          <input type="range" class="vol-sl" min="1" max="5" step="1" value="${L.vol}" oninput="setZoneVol('${z.id}',this.value)">
+          <span class="vol-num" id="vn-${z.id}">${L.vol}/5 · ${VL[L.vol]}</span>
+        </div>
+        ${vpHTML?`<div class="vpresets">${vpHTML}</div>`:''}
+        <div class="lzitems">${itemsHTML}</div>
+        <button class="lzadd" onclick="openPK('${z.id}')">+ 옷장에서 추가</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateVolume();
+}
+function togLZ(zid){
+  const body=document.querySelector(`#lz-${zid} .lzbody`),arr=document.querySelector(`#lz-${zid} .lzarr`);
+  if(body){body.classList.toggle('open');arr.classList.toggle('open');}
+}
+function setZoneVol(zid,v){
+  layers[zid].vol=parseInt(v);
+  const vn=document.getElementById('vn-'+zid);if(vn)vn.textContent=`${v}/5 · ${VL[parseInt(v)]}`;
+  const sl=document.querySelector(`#lz-${zid} .vol-sl`);if(sl)sl.value=v;
+  updateVolume();
+}
+function rmFromZone(zid,cid){layers[zid].items=layers[zid].items.filter(c=>c.id!==cid);renderLayerZones();}
+function updateVolume(){
+  const activeZ=LZ_DEF.filter(z=>layers[z.id].on||layers[z.id].items.length>0);
+  const upperZ=activeZ.filter(z=>z.id!=='bottom'&&z.id!=='shoes'&&z.id!=='acc');
+  const bottomZ=activeZ.find(z=>z.id==='bottom');
+  const upperPx=upperZ.reduce((a,z)=>a+VPX[layers[z.id].vol],0);
+  const bottomPx=bottomZ?VPX[layers[bottomZ.id].vol]:0;
+  drawSilhouette(Math.min(upperPx,34),Math.min(bottomPx,17));
+  drawVolBar(upperPx,bottomPx);
+  calcScore(upperPx,bottomPx,upperZ,bottomZ);
+  updateLVPanel(activeZ);
+}
+function drawSilhouette(ue,be){
+  const cx=54,sw=22+ue,ww=17+ue*.6,hw=21+ue*.4+be*.2,aw=8+ue*.7,ao=sw+3;
+  document.getElementById('sbody').setAttribute('d',`M${cx-sw} 47 Q${cx-sw-6} 51 ${cx-ww} 72 L${cx-hw} 117 Q${cx-hw} 121 ${cx} 121 Q${cx+hw} 121 ${cx+hw} 117 L${cx+ww} 72 Q${cx+sw+6} 51 ${cx+sw} 47 Z`);
+  document.getElementById('sarml').setAttribute('d',`M${cx-sw} 55 Q${cx-ao-9} 62 ${cx-ao-11} 95 Q${cx-ao-12} 103 ${cx-ao-7} 105 Q${cx-ao-2} 107 ${cx-ao} 97 L${cx-sw+3} 68 Z`);
+  document.getElementById('sarmr').setAttribute('d',`M${cx+sw} 55 Q${cx+ao+9} 62 ${cx+ao+11} 95 Q${cx+ao+12} 103 ${cx+ao+7} 105 Q${cx+ao+2} 107 ${cx+ao} 97 L${cx+sw-3} 68 Z`);
+  const bw=14+be,tw=11+be*.5;
+  document.getElementById('sbot').setAttribute('d',`M${cx-hw} 117 Q${cx-hw-1} 135 ${cx-bw-1} 170 Q${cx-bw-2} 179 ${cx-bw+6} 179 Q${cx-bw+14} 179 ${cx-bw+13} 170 L${cx-tw} 136 L${cx} 133 L${cx+tw} 136 L${cx+bw-13} 170 Q${cx+bw-14} 179 ${cx+bw-6} 179 Q${cx+bw+2} 179 ${cx+bw+1} 170 Q${cx+hw+1} 135 ${cx+hw} 117 Z`);
+  document.getElementById('sfl').setAttribute('cx',cx-bw+3);
+  document.getElementById('sfr').setAttribute('cx',cx+bw-3);
+}
+function drawVolBar(ue,be){
+  const maxPx=VPX[5]*4,total=ue+be*.5,pct=Math.min(Math.round(total/maxPx*100),100);
+  const bw=Math.round(pct/100*94);
+  document.getElementById('sVolBar').setAttribute('width',Math.max(bw,0));
+  document.getElementById('sVolPct').textContent=pct+'%';
+  let st,col;
+  if(pct<30){st='슬림';col='#22C55E';}else if(pct<55){st='적당';col='#7C3AED';}else if(pct<75){st='볼륨';col='#F59E0B';}else{st='과볼륨!';col='#EF4444';}
+  document.getElementById('sVolBar').setAttribute('fill',col);
+  document.getElementById('sVolSt').textContent=st;
+}
+function calcScore(ue,be,upperZ,bottomZ){
+  const score=Math.min(Math.round((ue*2+be)*1.5),100);
+  document.getElementById('vscoreNum').textContent=score;
+  const fill=document.getElementById('vscoreFill');
+  fill.style.width=score+'%';fill.style.background=score<30?'var(--green)':score<60?'var(--amber)':'var(--red)';
+  let vt,vc;
+  if(score<25){vt='✓ 슬림하고 깔끔한 실루엣이에요';vc='v-ok';}
+  else if(score<50){vt='○ 적당한 볼륨감 — 체형에 따라 자연스러워요';vc='v-warn';}
+  else if(score<72){vt='△ 볼륨 높음 — 두꺼운 레이어가 겹쳐있어요';vc='v-warn';}
+  else{vt='⚠ 과볼륨! 심하게 부해 보일 수 있어요';vc='v-bad';}
+  const vbox=document.getElementById('verdictBox');vbox.textContent=vt;vbox.className='verdict '+vc;
+  let bdHtml='';
+  for(let i=1;i<upperZ.length;i++){
+    const a=upperZ[i-1],b=upperZ[i],lA=layers[a.id],lB=layers[b.id],conflict=lA.vol>=3&&lB.vol>=3;
+    bdHtml+=`<div class="bd-row"><span>${a.lbl.split(' ')[0]} + ${b.lbl.split(' ')[0]}</span><span class="bv" style="color:${conflict?'var(--red)':'var(--green)'}">${conflict?'⚠ 두께 충돌':'✓ 양호'}</span></div>`;
+  }
+  const hasOuter=layers['outer'].on||layers['outer'].items.length>0;
+  const hasKnit=layers['knit'].on||layers['knit'].items.length>0;
+  const hasShirt=layers['shirt'].on||layers['shirt'].items.length>0;
+  if(hasOuter&&hasKnit){bdHtml+=`<div class="bd-row"><span>아우터 착용 시 니트 소매</span><span class="bv" style="color:var(--purple)">${VPX[layers['knit'].vol]>6?'많이':'살짝'} 노출</span></div>`;}
+  if(hasOuter&&hasShirt&&!hasKnit){bdHtml+=`<div class="bd-row"><span>아우터 안 상의 밑단</span><span class="bv" style="color:var(--purple)">${layers['shirt'].vol>=3?'많이':'살짝'} 비어져나옴</span></div>`;}
+  document.getElementById('bdRows').innerHTML=bdHtml;
+}
+function updateLVPanel(activeZ){
+  const lv=document.getElementById('lvWrap');
+  if(!activeZ.length){lv.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center;padding:18px;font-weight:500">레이어를 추가하면 여기에 표시돼요</div>';return;}
+  const order=['inner','shirt','knit','outer','bottom','shoes','acc'];
+  lv.innerHTML=activeZ.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id)).map(z=>{
+    const L=layers[z.id];
+    let exposeTag='';
+    if(z.id==='outer'&&(layers['knit'].on||layers['knit'].items.length>0)){exposeTag=`<span class="expose-tag">니트 소매 ${VPX[layers['knit'].vol]>6?'많이':'살짝'} 노출</span>`;}
+    if(z.id==='outer'&&(layers['shirt'].on||layers['shirt'].items.length>0)&&!layers['knit'].on&&!layers['knit'].items.length){exposeTag=`<span class="expose-tag">상의 밑단 노출</span>`;}
+    const itemsHTML=L.items.map((c,i)=>{const ci=CF[c.cat]||{ico:'👚'};return`<div class="lvitem"><div class="lvthumb">${c.img?`<img src="${c.img}">`:`<span>${ci.ico}</span>`}<span class="lvord">${i+1}</span></div><div class="lvname">${c.name.slice(0,6)}</div></div>`;}).join('');
+    const noItem=`<div class="lvitem"><div class="lvthumb" style="background:${z.bg};border-color:${z.color}"><span style="font-size:20px">${z.ico}</span></div><div class="lvname">두께${L.vol}</div></div>`;
+    return`<div class="lv-zone" style="border-color:${z.color}"><div class="lvzhead" style="background:${z.bg}"><span>${z.ico}</span><span>${z.lbl}</span><span style="font-size:10px;color:var(--muted);margin-left:4px">두께 ${L.vol}/5</span>${exposeTag}</div><div class="lvitems">${L.items.length?itemsHTML:noItem}</div></div>`;
+  }).join('');
+}
+function renderFitStage(){if(avData)document.getElementById('stagePerson').innerHTML=`<img src="${avData}">`;updateVolume();}
+function loadAv(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{avData=ev.target.result;document.getElementById('avbox').innerHTML=`<img src="${avData}"><input type="file" id="avfile" accept="image/*" style="display:none" onchange="loadAv(event)">`};r.readAsDataURL(f);}
+async function runLayerAI(){
+  const btn=document.getElementById('aiBtn'),box=document.getElementById('aiResult');
+  btn.disabled=true;box.className='airesult on';box.innerHTML='<span class="spin"></span>레이어드 볼륨을 분석 중...';
+  const activeZ=LZ_DEF.filter(z=>layers[z.id].on||layers[z.id].items.length>0);
+  const h=document.getElementById('bH').value,sh=document.getElementById('bSh').value;
+  let prompt=`전문 패션 스타일리스트로서 레이어드 코디를 분석해주세요.\n\n`;
+  if(h||sh)prompt+=`[체형] 키:${h||'-'}cm, ${sh||'-'}\n\n`;
+  prompt+=`[레이어 구성]\n`;
+  activeZ.forEach(z=>{const L=layers[z.id];const items=L.items.map(c=>c.name).join(',');prompt+=`- ${z.lbl}: 두께 ${L.vol}/5(${VL[L.vol]})${items?` — ${items}`:''}\n`;});
+  prompt+=`\n분석(300자 내외):\n1) 전체 실루엣\n2) 두께 충돌 여부\n3) 아우터 착용 시 소매·밑단 노출\n4) 체형별 조언\n5) 개선 제안`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');
+  }catch(e){box.innerHTML='오류: '+e.message;}
+  btn.disabled=false;
+}
+function clearFit(){
+  LZ_DEF.forEach(z=>{layers[z.id]={on:false,vol:z.defVol,items:[]};});avData=null;
+  document.getElementById('avbox').innerHTML=`<input type="file" id="avfile" accept="image/*" style="display:none" onchange="loadAv(event)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>내 사진 업로드</span>`;
+  document.getElementById('stagePerson').innerHTML='<div class="stage-ph">👤<br><span style="font-size:10px">내 사진<br>업로드</span></div>';
+  document.getElementById('aiResult').className='airesult';
+  renderLayerZones();
+}
+
+/* ════ PICKER ════ */
+function openPK(zid){
+  pkZone=zid;const z=LZM[zid];
+  document.getElementById('pkTit').textContent=`${z.ico} ${z.lbl} — 옷 선택`;
+  document.getElementById('pkSearch').value='';
+  document.getElementById('pkModal').classList.add('open');renderPK();
+}
+function closePK(){document.getElementById('pkModal').classList.remove('open');pkZone=null;}
+function renderPK(){
+  const q=document.getElementById('pkSearch').value.toLowerCase();
+  const z=LZM[pkZone];const already=new Set(layers[pkZone].items.map(c=>c.id));
+  let list=q?clothes.filter(c=>c.name.toLowerCase().includes(q)||(c.colors||[]).some(cl=>cl.name.toLowerCase().includes(q))):clothes.filter(c=>z.cats.includes(c.cat));
+  if(!list.length&&q)list=clothes.filter(c=>c.name.toLowerCase().includes(q));
+  document.getElementById('pkList').innerHTML=list.length?list.map(c=>{
+    const ci=CF[c.cat]||{ico:'👚'};const sel=already.has(c.id);
+    const mainColor=(c.colors||[]).find(x=>x.role==='main');
+    return`<div class="pk-item ${sel?'sel':''}" onclick="pickIt('${c.id}')">
+      <div class="pk-thumb">${c.img?`<img src="${c.img}">`:`<span>${ci.ico}</span>`}</div>
+      <div style="flex:1;min-width:0">
+        <div class="pk-name">${c.name}</div>
+        <div class="pk-sub">${ci.lbl}${mainColor?` · <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${mainColor.hex};vertical-align:middle;margin-right:2px"></span>${mainColor.name}`:''}</div>
+      </div>
+      ${sel?'<span class="pk-ck">✓</span>':''}
+    </div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;font-weight:500">해당 카테고리의 옷이 없어요</div>';
+}
+function pickIt(id){
+  const c=clothes.find(x=>x.id===id);if(!c)return;
+  const already=layers[pkZone].items.find(x=>x.id===id);
+  if(already)layers[pkZone].items=layers[pkZone].items.filter(x=>x.id!==id);
+  else{layers[pkZone].items.push(c);layers[pkZone].on=true;}
+  renderPK();renderLayerZones();
+}
+
+/* ════ STATS ════ */
+function renderStats(){
+  const byCat={},bySea={},bySty={},byMat={};
+  clothes.forEach(c=>{const ci=CF[c.cat]||{lbl:c.cat};byCat[ci.lbl]=(byCat[ci.lbl]||0)+1;if(c.season)bySea[c.season]=(bySea[c.season]||0)+1;if(c.style)bySty[c.style]=(bySty[c.style]||0)+1;if(c.material)byMat[c.material.split('(')[0]]=(byMat[c.material.split('(')[0]]||0)+1;});
+  const tv=clothes.reduce((a,c)=>a+(Number(c.price)||0),0);
+  const byColor={};clothes.forEach(c=>{(c.colors||[]).forEach(cl=>{if(cl.name)byColor[cl.name]=(byColor[cl.name]||0)+1;});});
+  function bc(t,data,col){
+    const max=Math.max(...Object.values(data),1);
+    const rows=Object.entries(data).filter(([k])=>k).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    return`<div class="sc2"><div class="sc2t">${t}</div>${rows.map(([k,v])=>`<div class="brr"><div class="brl">${k}</div><div class="brt"><div class="brf" style="width:${Math.round(v/max*100)}%;background:${col}"></div></div><div class="brc">${v}</div></div>`).join('')}</div>`;
+  }
+  function bcColor(t,data){
+    const max=Math.max(...Object.values(data),1);
+    const rows=Object.entries(data).filter(([k])=>k).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    return`<div class="sc2"><div class="sc2t">${t}</div>${rows.map(([k,v])=>{const hex=getHex(k);return`<div class="brr"><div class="brl" style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:${hex};flex-shrink:0;border:1px solid rgba(0,0,0,.1)"></span>${k}</div><div class="brt"><div class="brf" style="width:${Math.round(v/max*100)}%;background:${hex}"></div></div><div class="brc">${v}</div></div>`;}).join('')}</div>`;
+  }
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="sc2"><div class="sc2t">전체 요약</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${[['총 아이템',clothes.length+'개'],['총 가치','₩'+Math.round(tv/1000)+'K'],['평균 단가','₩'+Math.round((clothes.length?tv/clothes.length:0)/1000)+'K'],['카테고리',Object.keys(byCat).length+'종']].map(([l,v])=>`<div style="background:var(--surface);border-radius:var(--r);padding:10px;border:1px solid var(--border)"><div style="font-size:19px;font-weight:700">${v}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;font-weight:500">${l}</div></div>`).join('')}
+      </div>
+    </div>
+    ${bc('카테고리별',byCat,'#7C3AED')}
+    ${bc('계절별',bySea,'#0891B2')}
+    ${bc('스타일별',bySty,'#D97706')}
+    ${bc('소재별',byMat,'#059669')}
+    ${bcColor('색상별 (복수 색상 포함)',byColor)}
+  `;
+}
+
+/* ════ INIT ════ */
+load();
+goPage('home');
+</script>
+</body>
+</html>
