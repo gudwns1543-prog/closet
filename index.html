@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MyWardrobe AI — 스마트 옷장 관리</title>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -14,12 +16,77 @@
   --r:8px;--rl:12px;--rxl:16px;
   --green:#22C55E;--amber:#F59E0B;--red:#EF4444;--blue:#3B82F6;
   --gblue:#4285F4;--gred:#EA4335;--gyellow:#FBBC05;--ggreen:#34A853;
+  --husband:#3B82F6;--wife:#EC4899;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);font-size:13px;line-height:1.5;min-height:100vh}
 button,input,select,textarea{font-family:inherit}
 img{display:block;max-width:100%}
 a{color:var(--p);text-decoration:none}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* ═══ LOGIN PAGE ═══ */
+#loginPage{display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a0533 0%,#2d1b69 50%,#0891B2 100%);z-index:9999;align-items:center;justify-content:center}
+#loginPage.show{display:flex}
+.login-box{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);border-radius:24px;padding:44px 40px;width:100%;max-width:400px;text-align:center;color:#fff}
+.login-logo{font-size:56px;margin-bottom:12px}
+.login-title{font-size:26px;font-weight:700;margin-bottom:6px;letter-spacing:-.5px}
+.login-sub{font-size:14px;opacity:.7;margin-bottom:36px;line-height:1.6}
+.login-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:#fff;border:none;border-radius:12px;cursor:pointer;font-size:15px;font-weight:600;color:#1a1a1a;transition:all .2s;margin-bottom:12px}
+.login-google-btn:hover{background:#f8f8f8;transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.login-footer{font-size:11px;opacity:.5;margin-top:24px;line-height:1.7}
+/* 로그인 중 스피너 */
+.login-loading{display:none;flex-direction:column;align-items:center;gap:14px;color:#fff}
+.login-loading.show{display:flex}
+.big-spin{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+
+/* ═══ USER BADGE (topbar) ═══ */
+.user-badge{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;border:.5px solid transparent}
+.user-badge:hover{background:var(--sur)}
+.user-avatar{width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.user-name{max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-role-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ═══ 옷장 소유자 필터바 ═══ */
+.owner-filterbar{display:flex;gap:6px;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.owner-tab{display:flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:.5px solid var(--bdr);background:transparent;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);transition:all .15s;font-family:inherit}
+.owner-tab:hover{border-color:var(--bdr2)}
+.owner-tab.active-all{background:#1a1a2e;border-color:#1a1a2e;color:#fff}
+.owner-tab.active-husband{background:#EFF6FF;border-color:var(--husband);color:var(--husband)}
+.owner-tab.active-wife{background:#FDF2F8;border-color:var(--wife);color:var(--wife)}
+.owner-dot{width:7px;height:7px;border-radius:50%}
+
+/* ═══ 옷 소유자 배지 ═══ */
+.cowner{position:absolute;top:6px;left:6px;padding:2px 6px;border-radius:20px;font-size:9px;font-weight:700;z-index:2}
+.cowner-husband{background:#DBEAFE;color:#1E40AF}
+.cowner-wife{background:#FCE7F3;color:#9D174D}
+.cowner-shared{background:#F3F4F6;color:#6B7280}
+
+/* ═══ 당근함 탭 ═══ */
+.daangn-wrap{padding:14px;max-width:900px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.daangn-header{display:flex;align-items:center;justify-content:space-between}
+.daangn-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}
+.daangn-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.dstat{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rl);padding:12px 14px}
+.dstat-val{font-size:20px;font-weight:700;margin-bottom:2px}
+.dstat-lbl{font-size:11px;color:var(--muted);font-weight:500}
+.daangn-list{display:flex;flex-direction:column;gap:8px}
+.daangn-item{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;display:flex;gap:0;transition:all .15s}
+.daangn-item:hover{border-color:var(--p);box-shadow:0 2px 12px rgba(124,58,237,.08)}
+.daangn-thumb{width:90px;min-width:90px;height:90px;background:var(--sur);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0}
+.daangn-thumb img{width:100%;height:100%;object-fit:cover}
+.daangn-info{flex:1;padding:10px 12px;min-width:0;display:flex;flex-direction:column;gap:3px}
+.daangn-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.daangn-meta{font-size:11px;color:var(--muted)}
+.daangn-price{font-size:13px;font-weight:700;color:var(--p)}
+.daangn-status{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;align-self:flex-start}
+.ds-selling{background:#FEF9C3;color:#854D0E}
+.ds-sold{background:#DCFCE7;color:#166534}
+.daangn-actions{display:flex;flex-direction:column;gap:4px;padding:10px 10px 10px 0;justify-content:center}
+.daangn-btn{padding:5px 10px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;border:.5px solid var(--bdr2);background:transparent;color:var(--muted);transition:all .15s;white-space:nowrap}
+.daangn-btn:hover{border-color:var(--p);color:var(--p);background:var(--pl)}
+.daangn-btn.sold{background:#DCFCE7;border-color:#86EFAC;color:#166534}
+.daangn-empty{text-align:center;padding:48px;color:var(--muted)}
+</style>
 
 /* ═══ LAYOUT ═══ */
 .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
@@ -496,6 +563,26 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <body>
 <div class="app" id="app">
 
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-box">
+    <div id="loginForm">
+      <div class="login-logo">👗</div>
+      <div class="login-title">MyWardrobe AI</div>
+      <div class="login-sub">우리 부부의 스마트 옷장<br>구글 계정으로 로그인해주세요</div>
+      <button class="login-google-btn" onclick="loginWithGoogle()">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        구글 계정으로 로그인
+      </button>
+      <div class="login-footer">형준 · 아내 두 계정 모두 같은 옷장을 공유해요<br>각자 본인 구글 계정으로 로그인하면 돼요</div>
+    </div>
+    <div class="login-loading" id="loginLoading">
+      <div class="big-spin"></div>
+      <div style="font-size:14px;font-weight:600">로그인 중...</div>
+    </div>
+  </div>
+</div>
+
 <!-- TOPBAR -->
 <div class="topbar">
   <button class="logo-btn" onclick="goPage('home')">
@@ -507,9 +594,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <button class="nav-tab" id="tab-wardrobe" onclick="goPage('wardrobe')">옷장 관리</button>
     <button class="nav-tab" id="tab-fitting" onclick="goPage('fitting')">가상 피팅</button>
     <button class="nav-tab" id="tab-stats" onclick="goPage('통계')">통계</button>
+    <button class="nav-tab" id="tab-daangn" onclick="goPage('daangn')">🥕 당근함</button>
     <button class="nav-tab" id="tab-settings" onclick="goPage('settings')">⚙️ 설정</button>
   </div>
-  <button class="btn-add" onclick="openAdd()">+ 새 옷</button>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="btn-add" onclick="openAdd()">+ 새 옷</button>
+    <div class="user-badge" id="userBadge" onclick="showUserMenu()" style="display:none">
+      <img class="user-avatar" id="userAvatar" src="" alt="">
+      <span class="user-name" id="userName"></span>
+      <div class="user-role-dot" id="userRoleDot"></div>
+    </div>
+  </div>
 </div>
 
 <div class="pages">
@@ -590,6 +685,21 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 <!-- WARDROBE -->
 <div class="page" id="page-wardrobe">
+<!-- 소유자 필터바 -->
+<div class="owner-filterbar">
+  <button class="owner-tab active-all" id="ownerTab-all" onclick="setOwnerFilter('all')">
+    <div class="owner-dot" style="background:#1a1a2e"></div> 전체
+  </button>
+  <button class="owner-tab" id="ownerTab-husband" onclick="setOwnerFilter('husband')">
+    <div class="owner-dot" style="background:var(--husband)"></div> 남편
+  </button>
+  <button class="owner-tab" id="ownerTab-wife" onclick="setOwnerFilter('wife')">
+    <div class="owner-dot" style="background:var(--wife)"></div> 아내
+  </button>
+  <button class="owner-tab" id="ownerTab-shared" onclick="setOwnerFilter('shared')">
+    <div class="owner-dot" style="background:var(--muted)"></div> 공유
+  </button>
+</div>
 <div class="wd-layout">
   <div class="sidebar" id="sidebar">
     <div class="sb-head"><button class="sbtog" onclick="togSB()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button></div>
@@ -721,6 +831,22 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="stats-wrap"><div class="stats-grid" id="statsGrid"></div></div>
 </div>
 
+<!-- DAANGN 당근함 -->
+<div class="page" id="page-daangn">
+<div class="daangn-wrap">
+  <div class="daangn-header">
+    <div class="daangn-title">🥕 당근함 <span style="font-size:12px;color:var(--muted);font-weight:400">중고거래 관리</span></div>
+  </div>
+  <div class="daangn-stats">
+    <div class="dstat"><div class="dstat-val" id="daangnSellingCnt" style="color:var(--amber)">0</div><div class="dstat-lbl">판매 중</div></div>
+    <div class="dstat"><div class="dstat-val" id="daangnSoldCnt" style="color:var(--green)">0</div><div class="dstat-lbl">판매 완료</div></div>
+  </div>
+  <div class="daangn-list" id="daangnList">
+    <div class="daangn-empty">🥕<br><br>당근함이 비어있어요<br><span style="font-size:11px">옷장에서 옷을 선택해 당근함으로 이동하세요</span></div>
+  </div>
+</div>
+</div>
+
 <!-- SETTINGS -->
 <div class="page" id="page-settings">
 <div class="settings-wrap">
@@ -756,6 +882,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <div class="mfoot">
         <button class="mfb" onclick="openAdd(curId)">✏️ 수정</button>
         <button class="mfb p" onclick="addToLayerFromDet(curId)">피팅에 추가</button>
+        <button class="mfb" style="background:#FFF7ED;color:#C2410C;border-color:#FED7AA" onclick="moveToDaangn(curId)">🥕 당근함</button>
         <button class="mfb d" onclick="delOne(curId)">삭제</button>
       </div>
     </div>
@@ -784,6 +911,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           </div>
         </div>
         <div class="fg amfull"><label>이름 *</label><input type="text" id="fN" placeholder="예: 자라 오버핏 청바지"></div>
+        <!-- 소유자 선택 -->
+        <div class="fg amfull">
+          <label>소유자</label>
+          <div style="display:flex;gap:7px">
+            <button type="button" class="owner-sel-btn active" id="ownBtn-husband" onclick="setOwnerBtn('husband')" style="flex:1;padding:8px;border-radius:var(--r);border:1.5px solid var(--husband);background:#EFF6FF;color:var(--husband);font-size:12px;font-weight:700;cursor:pointer">👔 남편</button>
+            <button type="button" class="owner-sel-btn" id="ownBtn-wife" onclick="setOwnerBtn('wife')" style="flex:1;padding:8px;border-radius:var(--r);border:.5px solid var(--bdr2);background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">👗 아내</button>
+            <button type="button" class="owner-sel-btn" id="ownBtn-shared" onclick="setOwnerBtn('shared')" style="flex:1;padding:8px;border-radius:var(--r);border:.5px solid var(--bdr2);background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">👫 공유</button>
+          </div>
+        </div>
         <div class="fg"><label>카테고리 *</label><select id="fCa"><option value="">선택</option></select></div>
         <div class="fg"><label>상태</label><select id="fCn"><option value="">선택</option></select></div>
         <div class="fg amfull" id="ms-wrap-sleeve"></div>
@@ -985,6 +1121,252 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </div>
 
 <script>
+/* ════ SUPABASE 초기화 ════ */
+const SUPA_URL='https://hjavjagjekjdttxxxcsc.supabase.co';
+const SUPA_KEY='sb_publishable_PhNE1DrHCmlks8d6uWfV5A_frsq9L7t';
+let supa=null;
+let currentUser=null; // 로그인한 사용자
+let ownerFilter='all'; // 'all'|'husband'|'wife'|'shared'
+let daangnList=[];
+
+async function initSupabase(){
+  try{
+    supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+    // 로그인 상태 확인
+    const {data:{session}}=await supa.auth.getSession();
+    if(session){
+      await onLogin(session.user);
+    } else {
+      showLoginPage();
+    }
+    // 로그인 상태 변경 감지
+    supa.auth.onAuthStateChange(async(event,session)=>{
+      if(event==='SIGNED_IN'&&session){
+        await onLogin(session.user);
+      } else if(event==='SIGNED_OUT'){
+        showLoginPage();
+      }
+    });
+  }catch(e){
+    console.error('Supabase 초기화 실패:',e);
+    // Supabase 실패해도 로컬모드로 동작
+    showApp();
+  }
+}
+
+async function loginWithGoogle(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('loginLoading').classList.add('show');
+  try{
+    const {error}=await supa.auth.signInWithOAuth({
+      provider:'google',
+      options:{redirectTo:window.location.origin}
+    });
+    if(error)throw error;
+  }catch(e){
+    showToast('⚠️ 로그인 실패: '+e.message);
+    document.getElementById('loginForm').style.display='block';
+    document.getElementById('loginLoading').classList.remove('show');
+  }
+}
+
+async function onLogin(user){
+  currentUser=user;
+  // 프로필 로드
+  if(supa){
+    const {data:profile}=await supa.from('profiles').select('*').eq('id',user.id).single();
+    if(profile)currentUser.profile=profile;
+  }
+  updateUserBadge();
+  hideLoginPage();
+  showApp();
+  // Supabase에서 옷장 데이터 로드
+  await loadClothesFromDB();
+  await loadDaangnFromDB();
+}
+
+function updateUserBadge(){
+  if(!currentUser)return;
+  const badge=document.getElementById('userBadge');
+  const avatar=document.getElementById('userAvatar');
+  const name=document.getElementById('userName');
+  const dot=document.getElementById('userRoleDot');
+  badge.style.display='flex';
+  avatar.src=currentUser.user_metadata?.avatar_url||'';
+  name.textContent=currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'사용자';
+  const role=currentUser.profile?.role||'husband';
+  dot.style.background=role==='husband'?'var(--husband)':'var(--wife)';
+}
+
+function showUserMenu(){
+  if(!currentUser)return;
+  const role=currentUser.profile?.role||'husband';
+  const newRole=role==='husband'?'wife':'husband';
+  const label=newRole==='husband'?'남편':'아내';
+  if(confirm(`역할을 "${label}"로 변경할까요?\n(캘린더 추천이 ${label} 기준으로 바뀌어요)`)){
+    setUserRole(newRole);
+  }
+}
+
+async function setUserRole(role){
+  if(!currentUser||!supa)return;
+  await supa.from('profiles').update({role}).eq('id',currentUser.id);
+  if(!currentUser.profile)currentUser.profile={};
+  currentUser.profile.role=role;
+  updateUserBadge();
+  showToast(`✓ 역할이 "${role==='husband'?'남편':'아내'}"로 변경됐어요`);
+}
+
+async function logout(){
+  if(!supa)return;
+  await supa.auth.signOut();
+}
+
+function showLoginPage(){document.getElementById('loginPage').classList.add('show');document.getElementById('app').style.display='none';}
+function hideLoginPage(){document.getElementById('loginPage').classList.remove('show');}
+function showApp(){document.getElementById('app').style.display='flex';goPage('home');}
+
+/* ════ Supabase DB 연동 ════ */
+async function loadClothesFromDB(){
+  if(!supa||!currentUser)return;
+  try{
+    const {data,error}=await supa.from('clothes').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    if(data&&data.length>0){
+      // DB 데이터를 앱 형식으로 변환
+      clothes=data.map(dbToCloth);
+      save(); // localStorage 백업
+      renderWD();
+    }
+  }catch(e){console.warn('DB 로드 실패, 로컬 데이터 사용:',e);}
+}
+
+async function loadDaangnFromDB(){
+  if(!supa||!currentUser)return;
+  try{
+    const {data,error}=await supa.from('daangn').select('*, clothes(*)').order('listed_at',{ascending:false});
+    if(error)throw error;
+    daangnList=data||[];
+  }catch(e){daangnList=JSON.parse(localStorage.getItem('mw_daangn')||'[]');}
+}
+
+function dbToCloth(d){
+  return{id:d.id,name:d.name,cat:d.cat,owner:d.owner||'shared',
+    colors:d.colors||[],material:d.material||[],fit:d.fit||[],pattern:d.pattern||[],
+    style:d.style||[],season:d.season||[],occasion:d.occasion||[],sleeve:d.sleeve||[],
+    price:d.price,brand:d.brand,condition:d.condition,date:d.date,
+    url:d.url,memo:d.memo,img:d.img,imgs:d.imgs||[]};
+}
+
+function clothToDB(c){
+  return{id:c.id,name:c.name,cat:c.cat,owner:c.owner||'shared',
+    colors:c.colors,material:c.material,fit:c.fit,pattern:c.pattern,
+    style:c.style,season:c.season,occasion:c.occasion,sleeve:c.sleeve,
+    price:c.price?Number(c.price):null,brand:c.brand,condition:c.condition,
+    date:c.date,url:c.url,memo:c.memo,img:c.img,imgs:c.imgs||[]};
+}
+
+async function saveClothToDB(cloth){
+  if(!supa||!currentUser)return;
+  try{await supa.from('clothes').upsert(clothToDB(cloth));}
+  catch(e){console.warn('DB 저장 실패:',e);}
+}
+
+async function deleteClothFromDB(id){
+  if(!supa||!currentUser)return;
+  try{await supa.from('clothes').delete().eq('id',id);}
+  catch(e){console.warn('DB 삭제 실패:',e);}
+}
+
+/* ════ 소유자 필터 ════ */
+let mOwner='husband'; // 새 옷 추가시 소유자
+
+function setOwnerFilter(val){
+  ownerFilter=val;
+  ['all','husband','wife','shared'].forEach(v=>{
+    const el=document.getElementById('ownerTab-'+v);
+    if(!el)return;
+    el.className='owner-tab'+(v===val?' active-'+(val==='all'?'all':val):'');
+  });
+  renderWD();
+}
+
+function setOwnerBtn(val){
+  mOwner=val;
+  ['husband','wife','shared'].forEach(v=>{
+    const btn=document.getElementById('ownBtn-'+v);if(!btn)return;
+    if(v===val){
+      if(v==='husband'){btn.style.border='1.5px solid var(--husband)';btn.style.background='#EFF6FF';btn.style.color='var(--husband)';}
+      else if(v==='wife'){btn.style.border='1.5px solid var(--wife)';btn.style.background='#FDF2F8';btn.style.color='var(--wife)';}
+      else{btn.style.border='1.5px solid #6B7280';btn.style.background='#F3F4F6';btn.style.color='#374151';}
+    } else {
+      btn.style.border='.5px solid var(--bdr2)';btn.style.background='transparent';btn.style.color='var(--muted)';
+    }
+  });
+}
+
+/* ════ 당근함 ════ */
+async function moveToDaangn(id){
+  const c=clothes.find(x=>x.id===id);if(!c)return;
+  const price=prompt(`"${c.name}"\n당근마켓 판매 희망가격을 입력하세요 (원)\n비워두면 가격 미정으로 등록돼요`);
+  if(price===null)return; // 취소
+  const item={id:uid(),clothes_id:id,status:'selling',price:price?Number(price):null,memo:'',listed_at:new Date().toISOString()};
+  daangnList.unshift(item);
+  localStorage.setItem('mw_daangn',JSON.stringify(daangnList));
+  if(supa&&currentUser){
+    try{await supa.from('daangn').insert(item);}catch(e){}
+  }
+  closeDet();renderDaangn();
+  showToast('🥕 당근함으로 이동했어요!');
+}
+
+async function setDaangnStatus(id,status){
+  const item=daangnList.find(x=>x.id===id);if(!item)return;
+  item.status=status;
+  if(status==='sold')item.sold_at=new Date().toISOString();
+  localStorage.setItem('mw_daangn',JSON.stringify(daangnList));
+  if(supa&&currentUser){
+    try{await supa.from('daangn').update({status,sold_at:item.sold_at||null}).eq('id',id);}catch(e){}
+  }
+  renderDaangn();showToast(status==='sold'?'✅ 판매 완료!':'📦 판매 중으로 변경됐어요');
+}
+
+async function removeFromDaangn(id){
+  if(!confirm('당근함에서 삭제할까요?'))return;
+  daangnList=daangnList.filter(x=>x.id!==id);
+  localStorage.setItem('mw_daangn',JSON.stringify(daangnList));
+  if(supa&&currentUser){try{await supa.from('daangn').delete().eq('id',id);}catch(e){}}
+  renderDaangn();showToast('🗑️ 당근함에서 삭제됐어요');
+}
+
+function renderDaangn(){
+  const selling=daangnList.filter(x=>x.status==='selling');
+  const sold=daangnList.filter(x=>x.status==='sold');
+  document.getElementById('daangnSellingCnt').textContent=selling.length;
+  document.getElementById('daangnSoldCnt').textContent=sold.length;
+  const el=document.getElementById('daangnList');
+  if(!daangnList.length){el.innerHTML='<div class="daangn-empty">🥕<br><br>당근함이 비어있어요<br><span style="font-size:11px">옷장에서 옷을 선택해 당근함으로 이동하세요</span></div>';return;}
+  el.innerHTML=daangnList.map(item=>{
+    const c=clothes.find(x=>x.id===item.clothes_id);
+    if(!c)return'';
+    const ci=CF[c.cat]||{ico:'👚'};
+    const isSelling=item.status==='selling';
+    return`<div class="daangn-item">
+      <div class="daangn-thumb">${c.img?`<img src="${c.img}">`:`<span>${ci.ico}</span>`}</div>
+      <div class="daangn-info">
+        <div class="daangn-name">${c.name}</div>
+        <div class="daangn-meta">${ci.lbl}${c.brand?' · '+c.brand:''}</div>
+        <div class="daangn-price">${item.price?'₩'+Number(item.price).toLocaleString():'가격 미정'}</div>
+        <span class="daangn-status ${isSelling?'ds-selling':'ds-sold'}">${isSelling?'판매 중':'판매 완료'}</span>
+      </div>
+      <div class="daangn-actions">
+        ${isSelling?`<button class="daangn-btn sold" onclick="setDaangnStatus('${item.id}','sold')">판매완료</button>`:`<button class="daangn-btn" onclick="setDaangnStatus('${item.id}','selling')">판매중으로</button>`}
+        <button class="daangn-btn" onclick="removeFromDaangn('${item.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+}
+
 /* ════ 설정 기본값 ════ */
 const SETTING_DEFS={
   category:{label:'카테고리',ico:'🗂️',desc:'카테고리는 그룹별로 관리해요.',grouped:true,groups:[
@@ -1101,6 +1483,7 @@ function goPage(p){
   if(p==='wardrobe'){buildFPChips();renderWD();}
   if(p==='fitting')renderLZ();
   if(p==='통계')renderStats();
+  if(p==='daangn'){loadDaangnFromDB().then(()=>renderDaangn());}
   if(p==='settings')renderSettingsSide();
 }
 
@@ -1708,6 +2091,8 @@ function getF(){
   let vC=null;if(curSel!=='all'){if(GC[curSel])vC=new Set(GC[curSel]);else vC=new Set([curSel]);}
   let list=clothes.filter(c=>{
     if(vC&&!vC.has(c.cat))return false;
+    // 소유자 필터
+    if(ownerFilter!=='all'&&c.owner!==ownerFilter)return false;
     const cs=(c.colors||[]).map(x=>x.name).join(' ');
     if(q&&![c.name,cs,c.brand,...(Array.isArray(c.style)?c.style:[c.style||'']), ...(Array.isArray(c.material)?c.material:[c.material||''])].join(' ').toLowerCase().includes(q))return false;
     if(filters.season.size&&!(Array.isArray(c.season)?c.season:[c.season]).some(s=>filters.season.has(s)))return false;
@@ -1737,11 +2122,14 @@ function renderWD(){
     const seasons=Array.isArray(c.season)?c.season.slice(0,2).join('/'):c.season||'';
     const styles=Array.isArray(c.style)?c.style.slice(0,1).join(''):(c.style||'');
     const materials=Array.isArray(c.material)?c.material.slice(0,1).join(''):(c.material||'');
+    const ownerLabel=c.owner==='husband'?'👔':c.owner==='wife'?'👗':'';
+    const ownerClass=c.owner==='husband'?'cowner-husband':c.owner==='wife'?'cowner-wife':'cowner-shared';
     return`<div class="ccard ${isSel?'selected':''}" id="card-${c.id}">
       <div class="card-chk-zone" onclick="onChkClick(event,'${c.id}')"><div class="card-chk"></div></div>
       <div class="cthumb" onclick="onCardBody(event,'${c.id}')">
         ${c.img?`<img src="${c.img}">`:`<span>${ci.ico}</span>`}
         ${c.condition?`<span class="cbadge ${COND[c.condition]||''}">${c.condition}</span>`:''}
+        ${ownerLabel?`<span class="cowner ${ownerClass}">${ownerLabel}</span>`:''}
       </div>
       <div class="cbody" onclick="onCardBody(event,'${c.id}')">
         <div class="cname">${c.name}</div>
@@ -1843,10 +2231,15 @@ function openAdd(id){
     document.getElementById('fUrl').value=c.url||'';document.getElementById('fMe').value=c.memo||'';
     MS_FIELDS.forEach(f=>{msState[f]=Array.isArray(c[f])?[...c[f]]:(c[f]?[c[f]]:[]);updateMSTrigger(f);});
     mColors=c.colors?JSON.parse(JSON.stringify(c.colors)):[];if(c.img){mImgD=c.img;resetIZ(true);}else resetIZ(false);
+    // 수정시 기존 소유자 불러오기
+    setOwnerBtn(c.owner||'husband');
   } else {
     ['fN','fBr','fUrl','fMe'].forEach(i=>document.getElementById(i).value='');
     ['fCa','fCn'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('fPr').value='';resetIZ(false);
+    // 새 옷 추가시 현재 로그인한 사용자 role 기본값
+    const defaultOwner=currentUser?.profile?.role||'husband';
+    setOwnerBtn(defaultOwner);
   }
   renderMC();document.getElementById('addModal').classList.add('open');
 }
@@ -2127,6 +2520,7 @@ function saveItem(){
   const name=document.getElementById('fN').value.trim();if(!name){alert('이름을 입력해주세요');return;}
   const obj={
     id:editId||uid(),name,
+    owner:mOwner||'husband', // 소유자
     cat:document.getElementById('fCa').value,
     condition:document.getElementById('fCn').value,
     price:document.getElementById('fPr').value,
@@ -2136,11 +2530,13 @@ function saveItem(){
     memo:document.getElementById('fMe').value,
     colors:mColors.length?mColors:[{name:'미지정',hex:'#9ca3af',role:'main'}],
     img:mImgD||null,
-    imgs:mAllImgs.length?mAllImgs:(mImgD?[mImgD]:[]), // 여러 장 저장
+    imgs:mAllImgs.length?mAllImgs:(mImgD?[mImgD]:[]),
   };
   MS_FIELDS.forEach(f=>{obj[f]=[...msState[f]];});
   if(editId){const i=clothes.findIndex(c=>c.id===editId);if(i>=0)clothes[i]=obj;}else clothes.unshift(obj);
-  save();closeAdd();renderWD();showToast('✓ 저장됐어요!');
+  save();
+  saveClothToDB(obj); // Supabase 저장
+  closeAdd();renderWD();showToast('✓ 저장됐어요!');
 }
 
 /* ════ AI SCAN ════ */
@@ -2261,9 +2657,16 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 /* ════ INIT ════ */
 load();
-goPage('home');
-// 구글 캘린더 토큰 자동 복원
-setTimeout(tryAutoRestore, 300);
+// Supabase 초기화 — 로그인 체크 후 앱 시작
+initSupabase().then(()=>{
+  // Supabase 연동 완료 후 캘린더 토큰 복원
+  setTimeout(tryAutoRestore, 300);
+}).catch(()=>{
+  // 실패시 로컬모드
+  showApp();
+  goPage('home');
+  setTimeout(tryAutoRestore, 300);
+});
 </script>
 </body>
 </html>
