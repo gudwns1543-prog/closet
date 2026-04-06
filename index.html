@@ -39,11 +39,17 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
 /* ═══ HOME ═══ */
 .home-wrap{padding:16px;display:flex;flex-direction:column;gap:12px;max-width:1100px;width:100%;margin:0 auto}
-.home-hero{background:linear-gradient(135deg,#7C3AED,#4F46E5 60%,#0891B2);border-radius:var(--rxl);padding:20px 24px;color:#fff;position:relative;overflow:hidden}
-.hero-bg{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:80px;opacity:.1;pointer-events:none}
+.home-hero{background:linear-gradient(135deg,#7C3AED,#4F46E5 60%,#0891B2);border-radius:var(--rxl);padding:20px 24px;color:#fff;position:relative;overflow:hidden;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.hero-left{display:flex;flex-direction:column;gap:2px;z-index:1}
 .hero-date{font-size:11px;opacity:.8;margin-bottom:2px}
 .hero-title{font-size:20px;font-weight:700;margin-bottom:2px}
 .hero-sub{font-size:12px;opacity:.75}
+.hero-weather{display:flex;gap:5px;z-index:1;flex-shrink:0}
+.hwcard{background:rgba(255,255,255,.15);border-radius:10px;padding:7px 8px;text-align:center;min-width:44px;backdrop-filter:blur(4px);border:.5px solid rgba(255,255,255,.2)}
+.hwday{font-size:9px;opacity:.8;margin-bottom:2px;font-weight:600;letter-spacing:.03em}
+.hwico{font-size:16px;margin-bottom:1px}
+.hwtemp{font-size:10px;font-weight:700}
+.hwlo{font-size:9px;opacity:.7}
 .gcal-banner{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rl);padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .gcal-ico{width:36px;height:36px;border-radius:8px;background:#E8F0FE;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .gcal-text{flex:1;min-width:180px}
@@ -56,12 +62,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .cal-chip{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;border:.5px solid;cursor:pointer;transition:opacity .15s}
 .cal-chip.off{opacity:.35}
 .cal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.weather-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
-.wcard{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rl);padding:9px 5px;text-align:center}
-.wday{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
-.wico{font-size:20px;margin-bottom:2px}
-.wtemp{font-size:12px;font-weight:600}
-.wdesc{font-size:9px;color:var(--muted);margin-top:1px}
 .home-cal-section{display:grid;grid-template-columns:1fr 280px;gap:10px}
 .cal-card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rl);padding:12px}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -90,19 +90,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .ev-meta{font-size:10px;color:var(--muted)}
 .ev-who{font-size:10px;padding:1px 5px;border-radius:20px;font-weight:600;flex-shrink:0;align-self:flex-start}
 .no-ev{text-align:center;padding:14px;color:var(--muted);font-size:12px;line-height:1.7}
-.home-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hcard{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rl);padding:12px}
 .hcard-t{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
 .ai-rec-box{background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:10px 11px;font-size:12px;line-height:1.7;color:#3730A3;min-height:44px}
 .brow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--sur);font-size:12px}
 .brow:last-child{border-bottom:none}
 .bval{font-weight:700;color:var(--p)}
-.news-item{display:flex;gap:7px;padding:6px 0;border-bottom:1px solid var(--sur);cursor:pointer}
-.news-item:hover{opacity:.7}
-.news-item:last-child{border-bottom:none}
-.ndot{width:5px;height:5px;border-radius:50%;background:var(--p);margin-top:4px;flex-shrink:0}
-.ntext{font-size:11px;line-height:1.4}
-.ntime{font-size:10px;color:var(--muted);margin-top:1px}
 .laundry-item{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:6px;border:.5px solid var(--bdr);background:var(--sur);margin-bottom:4px;font-size:11px}
 .laundry-item:last-child{margin-bottom:0}
 .lname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
@@ -518,12 +511,26 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <!-- HOME -->
 <div class="page" id="page-home">
 <div class="home-wrap">
+
+  <!-- 히어로 + 날씨 통합 -->
   <div class="home-hero">
-    <div class="hero-bg">👗</div>
-    <div class="hero-date" id="hDate"></div>
-    <div class="hero-title" id="hGreet">안녕하세요 👋</div>
-    <div class="hero-sub">오늘의 스타일링을 확인해보세요</div>
+    <div class="hero-left">
+      <div class="hero-date" id="hDate"></div>
+      <div class="hero-title" id="hGreet">안녕하세요 👋</div>
+      <div class="hero-sub" id="heroSub">오늘의 스타일링을 확인해보세요</div>
+    </div>
+    <div class="hero-weather" id="heroWeather">
+      <div style="display:flex;align-items:center;gap:4px;opacity:.6;font-size:11px"><span class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff"></span> 날씨 로딩 중</div>
+    </div>
   </div>
+
+  <!-- AI 스타일 추천 (캘린더 위) -->
+  <div class="hcard">
+    <div class="hcard-t">✨ AI 스타일 추천</div>
+    <div class="ai-rec-box" id="aiRec"><span class="spin"></span> 분석 중...</div>
+  </div>
+
+  <!-- 구글 캘린더 배너 -->
   <div class="gcal-banner" id="gcalBanner">
     <div class="gcal-ico"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></div>
     <div class="gcal-text"><div class="gcal-title">구글 캘린더 연동</div><div class="gcal-sub">연동하면 실제 일정이 표시되고 일정 기반 AI 코디 추천을 받을 수 있어요</div></div>
@@ -534,7 +541,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <button onclick="document.getElementById('gcalGuideModal').classList.add('open')" style="padding:6px 11px;border:.5px solid var(--bdr2);border-radius:var(--r);background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-family:inherit;white-space:nowrap">실제 연동 방법 ↗</button>
   </div>
   <div id="gcalChipsRow" style="display:none"></div>
-  <div class="weather-grid" id="weatherGrid"></div>
+
+  <!-- 캘린더 + 일정/세탁 -->
   <div class="home-cal-section">
     <div class="cal-card">
       <div class="cal-nav">
@@ -564,14 +572,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       </div>
     </div>
   </div>
-  <div class="home-2col">
-    <div class="hcard" style="grid-column:1/-1">
-      <div class="hcard-t">✨ AI 스타일 추천</div>
-      <div class="ai-rec-box" id="aiRec"><span class="spin"></span>분석 중...</div>
-    </div>
-    <div class="hcard"><div class="hcard-t">📦 옷장 현황</div><div id="briefRows"></div></div>
-    <div class="hcard"><div class="hcard-t">📰 패션 트렌드</div><div id="newsEl"></div></div>
+
+  <!-- 옷장 현황 -->
+  <div class="hcard">
+    <div class="hcard-t">📦 옷장 현황</div>
+    <div id="briefRows"></div>
   </div>
+
 </div>
 </div>
 
@@ -1074,16 +1081,16 @@ function initHome(){
   document.getElementById('hDate').textContent=`${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
   const h=now.getHours();
   document.getElementById('hGreet').textContent=h<12?'좋은 아침이에요 ☀️':h<18?'좋은 오후에요 🌤️':'좋은 저녁이에요 🌙';
-  // 날씨 — 로딩 표시 후 실제 API 호출
-  document.getElementById('weatherGrid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--muted);font-size:12px"><span class="spin"></span> 날씨 불러오는 중...</div>`;
   const total=clothes.length,val=clothes.reduce((a,c)=>a+(Number(c.price)||0),0);
   const sc={};clothes.forEach(c=>{(Array.isArray(c.season)?c.season:[c.season]).filter(Boolean).forEach(s=>{sc[s]=(sc[s]||0)+1;});});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('briefRows').innerHTML=[['전체 아이템',total+'개'],['총 가치','₩'+Math.round(val/1000)+'K'],['주요 계절',ts?ts[0]:'-'],['새것/거의새것',clothes.filter(c=>c.condition==='새것'||c.condition==='거의 새것').length+'개']].map(([l,v])=>`<div class="brow"><span>${l}</span><span class="bval">${v}</span></div>`).join('');
-  document.getElementById('newsEl').innerHTML='<span class="spin"></span> 뉴스 불러오는 중...';
+  document.getElementById('briefRows').innerHTML=[
+    ['전체 아이템',total+'개'],['총 가치','₩'+Math.round(val/1000)+'K'],
+    ['주요 계절',ts?ts[0]:'-'],['새것/거의새것',clothes.filter(c=>c.condition==='새것'||c.condition==='거의 새것').length+'개']
+  ].map(([l,v])=>`<div class="brow"><span>${l}</span><span class="bval">${v}</span></div>`).join('');
   calY=now.getFullYear();calM=now.getMonth();calSel=tK();
-  renderCal();renderEvs();renderLaundry();fetchFashionNews();
-  fetchWeather(); // 실제 날씨 호출 (GPS 요청 포함)
+  renderCal();renderEvs();renderLaundry();
+  fetchWeather();
 }
 
 /* ════ 실제 날씨 — Open-Meteo + GPS ════ */
@@ -1103,59 +1110,53 @@ function wmoInfo(code){return WMO[code]||{ico:'🌡️',d:'알수없음'};}
 
 async function fetchWeather(){
   const days=['일','월','화','수','목','금','토'];
-  const grid=document.getElementById('weatherGrid');
+  const hero=document.getElementById('heroWeather');
   if(!navigator.geolocation){
-    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--muted);font-size:12px">📍 위치 정보를 지원하지 않는 브라우저예요</div>`;
-    return;
+    hero.innerHTML=`<div style="font-size:11px;opacity:.7">📍 위치 미지원</div>`;
+    runHomeAI(null);return;
   }
-  // GPS 위치 요청
   navigator.geolocation.getCurrentPosition(
     async(pos)=>{
       const lat=pos.coords.latitude.toFixed(4);
       const lon=pos.coords.longitude.toFixed(4);
       try{
-        // Open-Meteo API — API 키 불필요, 무료
         const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`;
         const res=await fetch(url);
         const data=await res.json();
         const {weathercode,temperature_2m_max,temperature_2m_min,time}=data.daily;
-        const now=new Date();
-        // 지역명 역지오코딩 (Open-Meteo 무료)
+        // 지역명
         let locName='';
         try{
           const gr=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`);
           const gd=await gr.json();
           locName=gd.address?.city||gd.address?.town||gd.address?.county||gd.address?.state||'';
         }catch(e){}
-        // 히어로 서브텍스트에 지역명 표시
-        const heroSub=document.querySelector('.hero-sub');
-        if(heroSub&&locName)heroSub.textContent=`📍 ${locName} 날씨 기준`;
-        // 7일 날씨 카드 렌더
-        grid.innerHTML=time.map((t,i)=>{
+        // 히어로 서브에 지역명
+        const sub=document.getElementById('heroSub');
+        if(sub&&locName)sub.textContent=`📍 ${locName} 날씨 기준`;
+        // 히어로 우측에 7일 날씨 카드
+        hero.innerHTML=time.map((t,i)=>{
           const d=new Date(t+'T00:00:00');
           const w=wmoInfo(weathercode[i]);
           const hi=Math.round(temperature_2m_max[i]);
           const lo=Math.round(temperature_2m_min[i]);
           const label=i===0?'오늘':i===1?'내일':days[d.getDay()];
-          return`<div class="wcard"><div class="wday">${label}</div><div class="wico">${w.ico}</div><div class="wtemp">${hi}°<span style="color:var(--muted);font-size:10px"> ${lo}°</span></div><div class="wdesc">${w.d}</div></div>`;
+          return`<div class="hwcard"><div class="hwday">${label}</div><div class="hwico">${w.ico}</div><div class="hwtemp">${hi}°</div><div class="hwlo">${lo}°</div></div>`;
         }).join('');
-        // AI 추천도 실제 날씨로 업데이트
         runHomeAI({ico:wmoInfo(weathercode[0]).ico,d:wmoInfo(weathercode[0]).d,hi:Math.round(temperature_2m_max[0]),lo:Math.round(temperature_2m_min[0])});
       }catch(e){
-        grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--muted);font-size:12px">⚠️ 날씨 정보를 불러오지 못했어요</div>`;
+        hero.innerHTML=`<div style="font-size:11px;opacity:.7">⚠️ 날씨 오류</div>`;
         runHomeAI(null);
       }
     },
     (err)=>{
-      // 위치 권한 거부 시
-      let msg='';
-      if(err.code===1)msg='📍 위치 권한이 거부됐어요. 브라우저 설정에서 허용해주세요.';
-      else if(err.code===2)msg='📍 위치를 확인할 수 없어요.';
-      else msg='📍 위치 요청 시간이 초과됐어요.';
-      grid.innerHTML=`<div style="grid-column:1/-1;padding:10px 12px;background:#FEF9C3;border-radius:var(--r);font-size:11px;color:#92400E;text-align:center;line-height:1.6">${msg}<br><span style="font-size:10px;opacity:.7">날씨 없이도 다른 기능은 모두 정상 작동해요</span></div>`;
+      let msg=err.code===1?'위치 권한 거부':'위치 확인 실패';
+      hero.innerHTML=`<div style="font-size:11px;opacity:.7">📍 ${msg}</div>`;
       runHomeAI(null);
     },
-    {timeout:8000,maximumAge:300000} // 5분 캐시
+    {timeout:8000,maximumAge:300000}
+  );
+}
   );
 }
 
@@ -1439,49 +1440,6 @@ async function runHomeAI(w){
   }catch(e){box.innerHTML='☀️ 오늘 날씨에 맞는 레이어드 코디를 시도해보세요!';}
 }
 
-/* ════ RSS 뉴스 (실제 연동) ════ */
-async function fetchFashionNews(){
-  const el=document.getElementById('newsEl');
-  // CORS proxy를 통해 Vogue Korea RSS 파싱
-  const RSS_SOURCES=[
-    'https://www.vogue.co.kr/feed/',
-    'https://www.elle.co.kr/rss',
-  ];
-  const PROXY='https://api.allorigins.win/get?url=';
-  let articles=[];
-  try{
-    // Vogue Korea RSS 시도
-    const url=PROXY+encodeURIComponent(RSS_SOURCES[0]);
-    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
-    const data=await res.json();
-    const xml=new DOMParser().parseFromString(data.contents,'text/xml');
-    const items=Array.from(xml.querySelectorAll('item')).slice(0,5);
-    articles=items.map(item=>{
-      const title=item.querySelector('title')?.textContent||'';
-      const link=item.querySelector('link')?.textContent||'#';
-      const pubDate=item.querySelector('pubDate')?.textContent||'';
-      const d=pubDate?new Date(pubDate):new Date();
-      const diff=Math.round((Date.now()-d)/3600000);
-      const timeStr=diff<1?'방금':diff<24?diff+'시간 전':Math.round(diff/24)+'일 전';
-      return{title:title.replace(/<[^>]+>/g,'').trim(),link,time:timeStr};
-    }).filter(a=>a.title);
-  }catch(e){
-    // RSS 실패 시 백업 뉴스 (패션 관련 실제 최신 키워드 기반)
-    articles=[];
-  }
-  if(!articles.length){
-    // 백업: Claude AI로 트렌드 생성
-    try{
-      const d=await callAI([{role:'user',content:`2025년 4월 기준 한국 패션 트렌드 뉴스 헤드라인 5개를 JSON 배열로만 답해주세요. 형식: [{"title":"제목","time":"n시간 전"}]. 실제 트렌드 기반으로.`}],300);
-      let raw=d.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
-      const parsed=JSON.parse(raw);
-      articles=parsed.map(a=>({...a,link:'#'}));
-    }catch(e2){
-      articles=[{title:'2025 SS 트렌드: 모노톤 레이어드가 대세',time:'2시간 전',link:'#'},{title:'올 봄 필수 아이템: 오버사이즈 리넨 셔츠',time:'4시간 전',link:'#'},{title:'미니멀리즘의 귀환 — 클린 실루엣이 핵심',time:'6시간 전',link:'#'},{title:'지속 가능한 패션: 빈티지 쇼핑 트렌드',time:'1일 전',link:'#'}];
-    }
-  }
-  el.innerHTML=articles.map(a=>`<div class="news-item" onclick="${a.link!=='#'?`window.open('${a.link}','_blank')`:''}"><div class="ndot"></div><div><div class="ntext">${a.title}</div><div class="ntime">${a.time}${a.link!=='#'?' · <span style="color:var(--p)">읽기 →</span>':''}</div></div></div>`).join('');
-}
 
 /* ════ 코디 계획하기 (일정별) ════
    구조: outfitPlans = {
@@ -1984,7 +1942,6 @@ function resetUrlTab(){
 
 function applyUrlResult(){
   const r=urlAnalysisResult;if(!r)return;
-  // 직접 입력 탭으로 이동 후 필드 채우기
   switchAmTab('manual');
   document.getElementById('fN').value=r.name||'';
   document.getElementById('fCa').value=r.category||'';
@@ -1992,19 +1949,37 @@ function applyUrlResult(){
   document.getElementById('fBr').value=r.brand||'';
   document.getElementById('fUrl').value=r.url||'';
   document.getElementById('fMe').value=r.size?`사이즈: ${r.size}`:'';
+
+  // 제품 이미지 자동 등록
+  if(r.image_url&&r.image_url.startsWith('http')){
+    // 외부 이미지를 canvas로 로드해서 base64로 변환
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{
+      try{
+        const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+        const ctx=c.getContext('2d');ctx.drawImage(img,0,0);
+        mImgD=c.toDataURL('image/jpeg',0.85);resetIZ(true);
+        showToast('✅ 제품 이미지 자동 등록 완료!');
+      }catch(e){
+        // CORS 차단 시 URL만 저장
+        mImgD=null;
+        showToast('✅ 제품 정보 입력 완료! (이미지는 직접 업로드해주세요)');
+      }
+    };
+    img.onerror=()=>{mImgD=null;};
+    img.src=r.image_url;
+  }
+
   // 다중선택 필드 적용
   MS_FIELDS.forEach(f=>{
     const v=r[f];
     msState[f]=Array.isArray(v)?v:(v?[v]:[]);
-    updateMSTrigger(f);
-    renderMSList(f,'');
+    updateMSTrigger(f);renderMSList(f,'');
   });
-  // 색상 적용
+  // 색상
   mColors=[];
   if(r.colors&&r.colors.length){
     r.colors.forEach(c=>mColors.push({name:c.name,hex:c.hex||gH(c.name),role:c.role||'main'}));
-  } else if(r.color_name){
-    mColors=[{name:r.color_name,hex:gH(r.color_name),role:'main'}];
   }
   renderMC();
   showToast('✅ 제품 정보가 입력됐어요! 확인 후 저장해주세요.');
