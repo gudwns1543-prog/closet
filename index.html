@@ -349,8 +349,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;backdrop-filter:blur(2px)}
 .overlay.open{display:flex}
 .modal{background:var(--card);border-radius:var(--rxl);width:100%;max-width:520px;margin:auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;z-index:501}
-.mhero{width:100%;height:170px;background:var(--sur);display:flex;align-items:center;justify-content:center;font-size:64px;overflow:hidden}
-.mhero img{width:100%;height:100%;object-fit:cover}
+.mhero{width:100%;height:260px;background:var(--sur);display:flex;align-items:center;justify-content:center;font-size:64px;overflow:hidden;position:relative;border-radius:var(--rxl) var(--rxl) 0 0}
+.mhero img{width:100%;height:100%;object-fit:contain;background:var(--sur)}
+/* 이미지 썸네일 슬라이더 */
+.mhero-thumbs{display:flex;gap:5px;padding:8px 14px;overflow-x:auto;background:var(--sur);border-bottom:1px solid var(--bdr);scrollbar-width:none}
+.mhero-thumbs::-webkit-scrollbar{display:none}
+.mthumb{width:48px;height:48px;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid transparent;flex-shrink:0;background:var(--card)}
+.mthumb img{width:100%;height:100%;object-fit:contain}
+.mthumb.active{border-color:var(--p)}
 .mbody{padding:16px}
 .mhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px}
 .mtit{font-size:16px;font-weight:700}.msub2{font-size:11px;color:var(--muted);margin-top:1px;font-weight:500}
@@ -740,6 +746,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div class="overlay" id="detailModal" onclick="onOverlayClick(event)">
   <div class="modal" id="modalBox">
     <div class="mhero" id="mhero"></div>
+    <div class="mhero-thumbs" id="mheroThumbs" style="display:none"></div>
     <div class="mbody">
       <div class="mhead"><div><div class="mtit" id="mname"></div><div class="msub2" id="msub2"></div></div><button class="mclose" onclick="closeDet()">×</button></div>
       <div class="mtags" id="mtags"></div>
@@ -1028,7 +1035,7 @@ function gT(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=p
 /* ════ STATE ════ */
 let clothes=[],curSel='all',openG=new Set(['tops-g','bottoms-g']),sbCol=false;
 let filters={season:new Set(),material:new Set(),style:new Set()};
-let editId=null,curId=null,mImgD=null,avData=null,mColors=[],sImgD=null,sMime='image/jpeg';
+let editId=null,curId=null,mImgD=null,mAllImgs=[],avData=null,mColors=[],sImgD=null,sMime='image/jpeg';
 let layers={};LZ.forEach(z=>{layers[z.id]={on:false,vol:z.dv,items:[]};});
 let pkZone=null,gcalOK=false,laundry=[],calY,calM,calSel;
 let selected=new Set(),selMode=false;
@@ -1746,7 +1753,22 @@ function deleteSelected(){const n=selected.size;clothes=clothes.filter(c=>!selec
 function openDet(id){
   curId=id;const c=clothes.find(x=>x.id===id);if(!c)return;
   const ci=CF[c.cat]||{ico:'👚',lbl:c.cat};
-  document.getElementById('mhero').innerHTML=c.img?`<img src="${c.img}">`:`<span style="font-size:64px">${ci.ico}</span>`;
+  // 이미지 — 여러 장 지원
+  const imgs=c.imgs&&c.imgs.length?c.imgs:(c.img?[c.img]:[]);
+  const heroEl=document.getElementById('mhero');
+  const thumbsEl=document.getElementById('mheroThumbs');
+  if(imgs.length>0){
+    heroEl.innerHTML=`<img id="mheroImg" src="${imgs[0]}" alt="${c.name}">`;
+    if(imgs.length>1){
+      thumbsEl.style.display='flex';
+      thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="mthumb ${i===0?'active':''}" onclick="switchDetImg(${i},'${src.replace(/'/g,"\\'")}',this)"><img src="${src}"></div>`).join('');
+    } else {
+      thumbsEl.style.display='none';
+    }
+  } else {
+    heroEl.innerHTML=`<span style="font-size:64px">${ci.ico}</span>`;
+    thumbsEl.style.display='none';
+  }
   document.getElementById('mname').textContent=c.name;
   const sleeve=Array.isArray(c.sleeve)?c.sleeve.join(', '):(c.sleeve||'');
   document.getElementById('msub2').textContent=[c.brand,sleeve&&sleeve!=='해당없음'?sleeve:''].filter(Boolean).join(' · ');
@@ -1761,6 +1783,12 @@ function openDet(id){
   const mo=document.getElementById('mmemo');if(c.memo){mo.textContent=c.memo;mo.style.display='block';}else mo.style.display='none';
   const ml=document.getElementById('mlink');if(c.url){ml.href=c.url;ml.style.display='inline-flex';}else ml.style.display='none';
   document.getElementById('detailModal').classList.add('open');
+}
+
+function switchDetImg(idx, src, el){
+  document.getElementById('mheroImg').src=src;
+  document.querySelectorAll('.mthumb').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
 }
 function onOverlayClick(e){if(e.target===document.getElementById('detailModal'))closeDet();}
 function closeDet(){document.getElementById('detailModal').classList.remove('open');curId=null;}
@@ -1782,7 +1810,7 @@ function buildCondSelect(){
 }
 
 function openAdd(id){
-  editId=id||null;mImgD=null;mColors=[];MS_FIELDS.forEach(f=>{msState[f]=[];});
+  editId=id||null;mImgD=null;mAllImgs=[];mColors=[];MS_FIELDS.forEach(f=>{msState[f]=[];});
   closeDet();document.getElementById('amTit').textContent=id?'옷 수정':'새 옷 추가';switchAmTab('manual');
   buildCatSelect();buildCondSelect();
   MS_FIELDS.forEach(createMSField);
@@ -1897,36 +1925,58 @@ async function runUrlAnalysis(){
 function showUrlResult(r){
   document.getElementById('urlStep1').style.display='none';
   document.getElementById('urlStep2').style.display='block';
-  // 신뢰도
   const conf=r.confidence||80;
   document.getElementById('urlConfPct').textContent=conf+'%';
   document.getElementById('urlConfBar').style.width=conf+'%';
   document.getElementById('urlConfBar').style.background=conf>=80?'var(--green)':conf>=60?'var(--amber)':'var(--red)';
-  // 헤더
   const ci=CF[r.category]||{ico:'👚',lbl:r.category||'의류'};
   const mainColor=r.colors?.[0];
+
+  // 이미지 선택 UI (여러 장)
+  const allImgs=r.all_images&&r.all_images.length?r.all_images:(r.image_url?[r.image_url]:[]);
+  let imgHtml='';
+  if(allImgs.length>0){
+    imgHtml=`<div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">📷 대표 이미지 선택 (클릭)</div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
+        ${allImgs.map((src,i)=>`<div onclick="selectUrlImg(${i})" id="urlImg${i}" style="width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid ${i===0?'var(--p)':'var(--bdr)'};transition:all .15s;background:var(--sur)">
+          <img src="${src}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.style.display='none'">
+        </div>`).join('')}
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:5px">선택된 이미지가 옷 카드에 표시돼요</div>
+    </div>`;
+  }
+
   document.getElementById('urlPreviewHead').innerHTML=`
     <div style="width:44px;height:44px;border-radius:10px;background:${mainColor?mainColor.hex+'22':'var(--sur)'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:.5px solid var(--bdr)">${ci.ico}</div>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:700;margin-bottom:2px">${r.name||'제품명 추출 실패'}</div>
       <div style="font-size:11px;color:var(--muted)">${r.brand||''} ${r.price?'· ₩'+Number(r.price).toLocaleString():''}</div>
     </div>`;
-  // 상세 정보
   const rows=[
-    ['카테고리', ci.lbl],
-    ['색상', (r.colors||[]).map(c=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:50%;background:${c.hex};border:.5px solid rgba(0,0,0,.1)"></span>${c.name}</span>`).join(', ')||'-'],
-    ['사이즈', urlAnalysisResult?.size||'-'],
-    ['소재', (r.material||[]).join(', ')||'-'],
-    ['핏', (r.fit||[]).join(', ')||'-'],
-    ['계절', (r.season||[]).join(', ')||'-'],
-    ['스타일', (r.style||[]).join(', ')||'-'],
-    ['소매', (r.sleeve||[]).join(', ')||'-'],
+    ['카테고리',ci.lbl],
+    ['색상',(r.colors||[]).map(c=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:50%;background:${c.hex};border:.5px solid rgba(0,0,0,.1)"></span>${c.name}</span>`).join(', ')||'-'],
+    ['사이즈',urlAnalysisResult?.size||'-'],
+    ['소재',(r.material||[]).join(', ')||'-'],
+    ['핏',(r.fit||[]).join(', ')||'-'],
+    ['계절',(r.season||[]).join(', ')||'-'],
+    ['스타일',(r.style||[]).join(', ')||'-'],
+    ['소매',(r.sleeve||[]).join(', ')||'-'],
   ];
-  document.getElementById('urlPreviewBody').innerHTML=rows.map(([l,v])=>`
-    <div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:7px 9px">
-      <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${l}</div>
-      <div style="font-size:11px;font-weight:600">${v}</div>
-    </div>`).join('');
+  document.getElementById('urlPreviewBody').innerHTML=
+    imgHtml+
+    rows.map(([l,v])=>`<div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:7px 9px"><div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${l}</div><div style="font-size:11px;font-weight:600">${v}</div></div>`).join('');
+}
+
+// 이미지 선택
+let urlSelectedImgIdx=0;
+function selectUrlImg(idx){
+  urlSelectedImgIdx=idx;
+  const allImgs=urlAnalysisResult?.all_images||[];
+  allImgs.forEach((_,i)=>{
+    const el=document.getElementById('urlImg'+i);
+    if(el)el.style.borderColor=i===idx?'var(--p)':'var(--bdr)';
+  });
 }
 
 function resetUrlTab(){
@@ -1948,37 +1998,32 @@ function applyUrlResult(){
   document.getElementById('fUrl').value=r.url||'';
   document.getElementById('fMe').value=r.size?`사이즈: ${r.size}`:'';
 
-  // 제품 이미지 자동 등록
-  if(r.image_url&&r.image_url.startsWith('http')){
-    // 외부 이미지를 canvas로 로드해서 base64로 변환
+  // 선택된 이미지 (사용자가 선택한 것 or 첫 번째)
+  const allImgs=r.all_images&&r.all_images.length?r.all_images:(r.image_url?[r.image_url]:[]);
+  const selectedSrc=allImgs[urlSelectedImgIdx]||allImgs[0]||'';
+
+  if(selectedSrc&&selectedSrc.startsWith('http')){
     const img=new Image();img.crossOrigin='anonymous';
     img.onload=()=>{
       try{
         const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
-        const ctx=c.getContext('2d');ctx.drawImage(img,0,0);
-        mImgD=c.toDataURL('image/jpeg',0.85);resetIZ(true);
-        showToast('✅ 제품 이미지 자동 등록 완료!');
-      }catch(e){
-        // CORS 차단 시 URL만 저장
-        mImgD=null;
-        showToast('✅ 제품 정보 입력 완료! (이미지는 직접 업로드해주세요)');
-      }
+        c.getContext('2d').drawImage(img,0,0);
+        mImgD=c.toDataURL('image/jpeg',0.85);
+        // 여러 장 모두 저장
+        mAllImgs=allImgs;
+        resetIZ(true);showToast('✅ 이미지 자동 등록!');
+      }catch(e){mImgD=null;mAllImgs=allImgs;showToast('✅ 정보 입력 완료! (이미지는 직접 업로드)');}
     };
-    img.onerror=()=>{mImgD=null;};
-    img.src=r.image_url;
+    img.onerror=()=>{mImgD=null;mAllImgs=allImgs;};
+    img.src=selectedSrc;
   }
 
-  // 다중선택 필드 적용
   MS_FIELDS.forEach(f=>{
-    const v=r[f];
-    msState[f]=Array.isArray(v)?v:(v?[v]:[]);
+    const v=r[f];msState[f]=Array.isArray(v)?v:(v?[v]:[]);
     updateMSTrigger(f);renderMSList(f,'');
   });
-  // 색상
   mColors=[];
-  if(r.colors&&r.colors.length){
-    r.colors.forEach(c=>mColors.push({name:c.name,hex:c.hex||gH(c.name),role:c.role||'main'}));
-  }
+  if(r.colors&&r.colors.length)r.colors.forEach(c=>mColors.push({name:c.name,hex:c.hex||gH(c.name),role:c.role||'main'}));
   renderMC();
   showToast('✅ 제품 정보가 입력됐어요! 확인 후 저장해주세요.');
 }
@@ -2052,6 +2097,7 @@ function saveItem(){
     memo:document.getElementById('fMe').value,
     colors:mColors.length?mColors:[{name:'미지정',hex:'#9ca3af',role:'main'}],
     img:mImgD||null,
+    imgs:mAllImgs.length?mAllImgs:(mImgD?[mImgD]:[]), // 여러 장 저장
   };
   MS_FIELDS.forEach(f=>{obj[f]=[...msState[f]];});
   if(editId){const i=clothes.findIndex(c=>c.id===editId);if(i>=0)clothes[i]=obj;}else clothes.unshift(obj);
