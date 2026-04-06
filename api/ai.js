@@ -37,6 +37,25 @@ export default async function handler(req) {
           || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
         if (ogImgMatch) productImageUrl = ogImgMatch[1];
 
+        // 추가 이미지들 수집 (og:image:secure_url, twitter:image, JSON-LD 등)
+        const extraImgs = new Set();
+        if (productImageUrl) extraImgs.add(productImageUrl);
+        // og:image 여러 개
+        const ogMatches = html.matchAll(/<meta[^>]*(?:property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']|content=["']([^"']+)["'][^>]*property=["']og:image(?::secure_url)?["'])/gi);
+        for (const m of ogMatches) { const u = m[1]||m[2]; if(u&&u.startsWith('http'))extraImgs.add(u); }
+        // JSON-LD에서 이미지 추출
+        const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+        if (jsonLdMatch) {
+          for (const jl of jsonLdMatch) {
+            try {
+              const obj = JSON.parse(jl.replace(/<[^>]+>/g,''));
+              const imgs = obj.image||obj.images||[];
+              (Array.isArray(imgs)?imgs:[imgs]).forEach(i=>{ if(typeof i==='string'&&i.startsWith('http'))extraImgs.add(i); if(i?.url)extraImgs.add(i.url); });
+            } catch(e){}
+          }
+        }
+        const allImages = [...extraImgs].filter(u=>u&&u.startsWith('http')).slice(0, 8);
+
         // 텍스트 추출
         pageContent = html
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -58,7 +77,7 @@ export default async function handler(req) {
 - 색상: ${color || '미입력'}
 - 사이즈: ${size || '미입력'}
 - URL: ${url}
-- 추출된 이미지 URL: ${productImageUrl || '없음'}
+- 추출된 이미지들: ${allImages.join(', ') || '없음'}
 
 페이지 내용:
 ${pageContent}
@@ -78,7 +97,8 @@ ${pageContent}
   "occasion": ["착용상황"],
   "price": 숫자(원화),
   "size": "${size || ''}",
-  "image_url": "${productImageUrl || ''}",
+  "image_url": "${allImages[0] || ''}",
+  "all_images": ${JSON.stringify(allImages)},
   "confidence": 정확도0-100
 }`
       }];
