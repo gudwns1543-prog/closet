@@ -1412,6 +1412,20 @@ function rmL(id){laundry=laundry.filter(l=>l.id!==id);renderLaundry();}
 function openLaundryAdd(){pkZone='_laundry';document.getElementById('pkTit').textContent='세탁할 옷 🧺';document.getElementById('pkSearch').value='';document.getElementById('pkModal').classList.add('open');renderPK();}
 function openDryAdd(){pkZone='_dry';document.getElementById('pkTit').textContent='건조대로 이동 💨';document.getElementById('pkSearch').value='';document.getElementById('pkModal').classList.add('open');renderPK();}
 
+/* ════ AI 공통 호출 헬퍼 — 항상 /api/ai 프록시 경유 ════ */
+async function callAI(messages, max_tokens=500){
+  const res=await fetch('/api/ai',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages, max_tokens})
+  });
+  if(!res.ok) throw new Error(`서버 오류 ${res.status}`);
+  const data=await res.json();
+  if(data.type==='error') throw new Error(data.error?.message||JSON.stringify(data.error));
+  if(data.error) throw new Error(typeof data.error==='object'?JSON.stringify(data.error):data.error);
+  return data;
+}
+
 /* ════ HOME AI ════ */
 async function runHomeAI(w){
   const box=document.getElementById('aiRec');box.innerHTML='<span class="spin"></span>분석 중...';
@@ -1419,8 +1433,10 @@ async function runHomeAI(w){
   const evs=gcalOK?makeGEvs().filter(e=>e.date===tK()).map(e=>e.title).join(', '):'';
   const wl=clothes.slice(0,4).map(c=>`${c.name}(${(c.colors||[]).map(x=>x.name).join('&')})`).join(', ');
   const prompt=`오늘 날씨: ${wD}\n오늘 일정: ${evs||'특별한 일정 없음'}\n내 옷장: ${wl||'없음'}\n\n2-3문장으로 친근하게 스타일링 추천해주세요. 이모지 사용.`;
-  try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:220,messages:[{role:'user',content:prompt}]})});const data=await res.json();box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');}
-  catch(e){box.innerHTML='☀️ 오늘 날씨에 맞는 레이어드 코디를 시도해보세요!';}
+  try{
+    const data=await callAI([{role:'user',content:prompt}],220);
+    box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');
+  }catch(e){box.innerHTML='☀️ 오늘 날씨에 맞는 레이어드 코디를 시도해보세요!';}
 }
 
 /* ════ RSS 뉴스 (실제 연동) ════ */
@@ -1454,10 +1470,9 @@ async function fetchFashionNews(){
     articles=[];
   }
   if(!articles.length){
-    // 백업: Naver 뉴스 검색 API 없이 Claude AI로 트렌드 생성
+    // 백업: Claude AI로 트렌드 생성
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:`2025년 4월 기준 한국 패션 트렌드 뉴스 헤드라인 5개를 JSON 배열로만 답해주세요. 형식: [{"title":"제목","time":"n시간 전"}]. 실제 트렌드 기반으로.`}]})});
-      const d=await res.json();
+      const d=await callAI([{role:'user',content:`2025년 4월 기준 한국 패션 트렌드 뉴스 헤드라인 5개를 JSON 배열로만 답해주세요. 형식: [{"title":"제목","time":"n시간 전"}]. 실제 트렌드 기반으로.`}],300);
       let raw=d.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
       const parsed=JSON.parse(raw);
       articles=parsed.map(a=>({...a,link:'#'}));
@@ -1876,13 +1891,45 @@ async function runUrlAnalysis(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:'product_url',url,color,size})
     });
+
+    // HTTP 에러 체크
+    if(!res.ok){
+      const errText=await res.text();
+      throw new Error(`서버 오류 ${res.status}: ${errText.slice(0,200)}`);
+    }
+
     const data=await res.json();
-    if(data.error)throw new Error(data.error);
+
+    // API 레벨 에러 체크 (Anthropic에서 반환한 에러)
+    if(data.error){
+      const msg=typeof data.error==='object'?JSON.stringify(data.error):data.error;
+      throw new Error(msg);
+    }
+    if(data.type==='error'){
+      throw new Error(data.error?.message||JSON.stringify(data));
+    }
+
+    // 응답 파싱
+    if(!data.content||!data.content.length){
+      throw new Error('AI 응답이 비어있어요. API 키를 확인해주세요.');
+    }
 
     const raw=data.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
-    const result=JSON.parse(raw);
+
+    // JSON 파싱 시도
+    let result;
+    try{
+      result=JSON.parse(raw);
+    }catch(parseErr){
+      // JSON 파싱 실패 시 — AI가 JSON 외 텍스트를 포함한 경우
+      const match=raw.match(/\{[\s\S]*\}/);
+      if(match)result=JSON.parse(match[0]);
+      else throw new Error('AI 응답을 파싱할 수 없어요: '+raw.slice(0,100));
+    }
+
     urlAnalysisResult={...result,url,size};
     showUrlResult(result);
+
   } catch(e){
     errEl.style.display='block';
     errEl.innerHTML=`⚠️ 분석 실패: ${e.message}<br><span style="font-size:11px;opacity:.8">링크가 올바른지 확인하거나, 직접 입력 탭을 이용해주세요.</span>`;
@@ -2040,9 +2087,16 @@ function saveItem(){
 
 /* ════ AI SCAN ════ */
 function onScanFile(e){const f=e.target.files[0];if(!f)return;sMime=f.type||'image/jpeg';const r=new FileReader();r.onload=ev=>{sImgD=ev.target.result;const zone=document.getElementById('scanZone');document.getElementById('scanPh').style.display='none';let img=zone.querySelector('img');if(!img){img=new Image();img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--sur)';zone.appendChild(img);}img.src=sImgD;const btn=document.getElementById('scanBtn');btn.disabled=false;btn.style.opacity='1';document.getElementById('scanBtnTxt').textContent='✨ AI로 자동 분석';};r.readAsDataURL(f);}
-async function runScan(){if(!sImgD)return;const btn=document.getElementById('scanBtn');btn.disabled=true;document.getElementById('scanBtnTxt').innerHTML='<span class="spin"></span>분석 중...';
+async function runScan(){
+  if(!sImgD)return;
+  const btn=document.getElementById('scanBtn');
+  btn.disabled=true;document.getElementById('scanBtnTxt').innerHTML='<span class="spin"></span>분석 중...';
   const prompt=`이 옷을 분석해서 JSON만 출력:\n{"name":"이름","category":"티셔츠/셔츠|니트/스웨터|블라우스|맨투맨|바지|스커트|반바지|재킷/점퍼|코트|가디건|패딩|원피스|스니커즈|구두/힐|부츠|샌들|가방|주얼리|모자|이너웨어 중 하나","sleeve":["반팔"],"colors":[{"name":"색상명","hex":"#헥스","role":"main"}],"material":["소재"],"fit":["핏"],"pattern":["패턴"],"style":["스타일"],"season":["계절들"],"occasion":["착용상황"],"confidence":85,"note":"1문장"}`;
-  try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:sMime,data:sImgD.split(',')[1]}},{type:'text',text:prompt}]}]})});const data=await res.json();let raw=data.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();const r2=JSON.parse(raw);applyS(r2);}catch(e){document.getElementById('scanResult').innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px;background:#FEF2F2;border-radius:var(--r)">분석 오류: ${e.message}</div>`;}
+  try{
+    const data=await callAI([{role:'user',content:[{type:'image',source:{type:'base64',media_type:sMime,data:sImgD.split(',')[1]}},{type:'text',text:prompt}]}],600);
+    let raw=data.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
+    const r2=JSON.parse(raw);applyS(r2);
+  }catch(e){document.getElementById('scanResult').innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px;background:#FEF2F2;border-radius:var(--r)">분석 오류: ${e.message}</div>`;}
   btn.disabled=false;document.getElementById('scanBtnTxt').textContent='🔄 다시 분석';
 }
 function applyS(r){
@@ -2068,7 +2122,20 @@ function calcScore(ue,be,uZ){const score=Math.min(Math.round((ue*2+be)*1.5),100)
 function updateLV(aZ){const lv=document.getElementById('lvWrap');if(!aZ.length){lv.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center;padding:14px;font-weight:500">레이어를 추가하면 표시돼요</div>';return;}const order=['inner','shirt','knit','outer','bottom','shoes','acc'];lv.innerHTML=aZ.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id)).map(z=>{const L=layers[z.id];let et='';if(z.id==='outer'&&(layers['knit'].on||layers['knit'].items.length>0)){et=`<span class="expose-tag">니트소매 ${VPX[layers['knit'].vol]>6?'많이':'살짝'} 노출</span>`;}const iH=L.items.map((c,i)=>{const ci=CF[c.cat]||{ico:'👚'};return`<div class="lvitem"><div class="lvthumb">${c.img?`<img src="${c.img}">`:`<span>${ci.ico}</span>`}<span class="lvord">${i+1}</span></div><div class="lvname">${c.name.slice(0,5)}</div></div>`;}).join('');const ni=`<div class="lvitem"><div class="lvthumb" style="background:${z.bg};border-color:${z.color}"><span style="font-size:18px">${z.ico}</span></div><div class="lvname">두께${L.vol}</div></div>`;return`<div class="lv-zone" style="border-color:${z.color}"><div class="lvzhead" style="background:${z.bg}"><span>${z.ico}</span><span>${z.lbl}</span><span style="font-size:9px;color:var(--muted);margin-left:3px">두께${L.vol}/5</span>${et}</div><div class="lvitems">${L.items.length?iH:ni}</div></div>`;}).join('');}
 function renderFitStage(){if(avData)document.getElementById('stagePerson').innerHTML=`<img src="${avData}">`;updateVol();}
 function loadAv(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{avData=ev.target.result;document.getElementById('avbox').innerHTML=`<img src="${avData}"><input type="file" id="avfile" accept="image/*" style="display:none" onchange="loadAv(event)">`};r.readAsDataURL(f);}
-async function runLayerAI(){const btn=document.getElementById('aiBtn'),box=document.getElementById('aiResult');btn.disabled=true;box.className='airesult on';box.innerHTML='<span class="spin"></span>분석 중...';const aZ=LZ.filter(z=>layers[z.id].on||layers[z.id].items.length>0);const h=document.getElementById('bH').value,sh=document.getElementById('bSh').value;let prompt=`패션 스타일리스트로 레이어드 코디 분석.\n${h||sh?`키:${h||'-'}cm, 체형:${sh||'-'}\n`:''}\n[레이어]\n`;aZ.forEach(z=>{const L=layers[z.id];prompt+=`- ${z.lbl}: 두께${L.vol}/5(${VL[L.vol]})${L.items.length?` — ${L.items.map(c=>c.name).join(',')}`:''}\n`;});prompt+=`\n200자 내외로 친근하게 분석해주세요.`;try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:prompt}]})});const data=await res.json();box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');}catch(e){box.innerHTML='오류: '+e.message;}btn.disabled=false;}
+async function runLayerAI(){
+  const btn=document.getElementById('aiBtn'),box=document.getElementById('aiResult');
+  btn.disabled=true;box.className='airesult on';box.innerHTML='<span class="spin"></span>분석 중...';
+  const aZ=LZ.filter(z=>layers[z.id].on||layers[z.id].items.length>0);
+  const h=document.getElementById('bH').value,sh=document.getElementById('bSh').value;
+  let prompt=`패션 스타일리스트로 레이어드 코디 분석.\n${h||sh?`키:${h||'-'}cm, 체형:${sh||'-'}\n`:''}\n[레이어]\n`;
+  aZ.forEach(z=>{const L=layers[z.id];prompt+=`- ${z.lbl}: 두께${L.vol}/5(${VL[L.vol]})${L.items.length?` — ${L.items.map(c=>c.name).join(',')}`:''}\n`;});
+  prompt+=`\n200자 내외로 친근하게 분석해주세요.`;
+  try{
+    const data=await callAI([{role:'user',content:prompt}],400);
+    box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');
+  }catch(e){box.innerHTML='오류: '+e.message;}
+  btn.disabled=false;
+}
 function clearFit(){LZ.forEach(z=>{layers[z.id]={on:false,vol:z.dv,items:[]};});avData=null;document.getElementById('avbox').innerHTML=`<input type="file" id="avfile" accept="image/*" style="display:none" onchange="loadAv(event)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>내 사진 업로드</span>`;document.getElementById('stagePerson').innerHTML='<div class="stage-ph">👤<br><span style="font-size:10px">내 사진<br>업로드</span></div>';document.getElementById('aiResult').className='airesult';renderLZ();}
 
 /* ════ PICKER ════ */
