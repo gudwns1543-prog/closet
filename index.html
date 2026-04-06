@@ -755,8 +755,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="am-head"><span id="amTit">새 옷 추가</span><button class="am-x" onclick="closeAdd()">×</button></div>
     <div class="am-tabs">
       <button class="am-tab active" id="tab-manual" onclick="switchAmTab('manual')">✏️ 직접 입력</button>
+      <button class="am-tab" id="tab-url" onclick="switchAmTab('url')">🔗 링크로 추가</button>
       <button class="am-tab" id="tab-scan" onclick="switchAmTab('scan')">📸 AI 사진 분석</button>
     </div>
+
+    <!-- 직접 입력 -->
     <div id="amManual">
       <div class="am-grid">
         <div class="fg amfull"><label>사진</label>
@@ -769,7 +772,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="fg amfull"><label>이름 *</label><input type="text" id="fN" placeholder="예: 자라 오버핏 청바지"></div>
         <div class="fg"><label>카테고리 *</label><select id="fCa"><option value="">선택</option></select></div>
         <div class="fg"><label>상태</label><select id="fCn"><option value="">선택</option></select></div>
-        <!-- 다중선택 필드들 -->
         <div class="fg amfull" id="ms-wrap-sleeve"></div>
         <div class="fg amfull" id="ms-wrap-material"></div>
         <div class="fg" id="ms-wrap-fit"></div>
@@ -777,7 +779,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="fg amfull" id="ms-wrap-style"></div>
         <div class="fg amfull" id="ms-wrap-season"></div>
         <div class="fg amfull" id="ms-wrap-occasion"></div>
-        <!-- 색상 -->
         <div class="fg amfull">
           <label>색상 (복수 — 메인+서브)</label>
           <div class="color-tags-wrap" id="colorWrap"></div>
@@ -795,6 +796,69 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         <div class="fg amfull"><label>메모</label><textarea id="fMe" placeholder="세탁법, 코디 팁..."></textarea></div>
       </div>
     </div>
+
+    <!-- 🔗 링크로 추가 -->
+    <div id="amUrl" style="display:none">
+      <!-- Step 1: URL + 색상/사이즈 입력 -->
+      <div id="urlStep1">
+        <div style="background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:11px 13px;margin-bottom:14px;font-size:12px;color:#3730A3;line-height:1.7">
+          🔗 쇼핑몰 제품 링크를 붙여넣으면 AI가 이름, 카테고리, 소재, 스타일 등을 자동으로 채워줘요.<br>
+          <span style="font-size:11px;opacity:.8">무신사, 자라, H&M, 유니클로, 29CM, W컨셉 등 대부분 지원</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="fg">
+            <label>제품 링크 *</label>
+            <input type="text" id="urlInput" placeholder="https://www.musinsa.com/products/..." style="padding:9px 11px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);color:var(--ink);font-size:12px;outline:none;width:100%;transition:border-color .15s" oninput="checkUrlInput()" onfocus="this.style.borderColor='var(--p)'" onblur="this.style.borderColor='var(--bdr2)'">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fg">
+              <label>구매한 색상 *</label>
+              <input type="text" id="urlColor" placeholder="예: 블랙, 네이비, 아이보리..." style="padding:9px 11px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);color:var(--ink);font-size:12px;outline:none;width:100%" onfocus="this.style.borderColor='var(--p)'" onblur="this.style.borderColor='var(--bdr2)'">
+            </div>
+            <div class="fg">
+              <label>구매한 사이즈</label>
+              <input type="text" id="urlSize" placeholder="예: M, 95, 270..." style="padding:9px 11px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);color:var(--ink);font-size:12px;outline:none;width:100%" onfocus="this.style.borderColor='var(--p)'" onblur="this.style.borderColor='var(--bdr2)'">
+            </div>
+          </div>
+          <button id="urlAnalyzeBtn" onclick="runUrlAnalysis()" disabled style="width:100%;padding:11px;background:var(--p);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;opacity:.4;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px">
+            <span id="urlAnalyzeTxt">링크를 먼저 입력해주세요</span>
+          </button>
+        </div>
+        <div id="urlError" style="display:none;margin-top:8px;padding:9px 11px;background:#FEF2F2;border-radius:var(--r);font-size:12px;color:var(--red);line-height:1.6"></div>
+      </div>
+
+      <!-- Step 2: 분석 결과 확인 -->
+      <div id="urlStep2" style="display:none">
+        <!-- 신뢰도 바 -->
+        <div style="background:var(--sur);border-radius:var(--r);padding:11px 13px;margin-bottom:12px;border:.5px solid var(--bdr)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:12px;font-weight:700;color:var(--ink)">✨ AI 분석 완료</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;color:var(--muted)">신뢰도</span>
+              <span id="urlConfPct" style="font-size:13px;font-weight:700;color:var(--p)">0%</span>
+            </div>
+          </div>
+          <div style="height:6px;background:var(--bdr);border-radius:3px;overflow:hidden">
+            <div id="urlConfBar" style="height:100%;border-radius:3px;background:var(--p);transition:width .6s;width:0%"></div>
+          </div>
+        </div>
+        <!-- 결과 미리보기 -->
+        <div id="urlPreviewCard" style="border:.5px solid var(--bdr);border-radius:var(--rl);overflow:hidden;margin-bottom:12px">
+          <div id="urlPreviewHead" style="padding:12px 14px;background:var(--sur);border-bottom:.5px solid var(--bdr);display:flex;align-items:center;gap:10px"></div>
+          <div id="urlPreviewBody" style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+        </div>
+        <!-- 수정 안내 -->
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px 10px;background:var(--sur);border-radius:var(--r)">
+          💡 틀린 정보가 있으면 저장 후 수정 버튼으로 수정할 수 있어요
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="resetUrlTab()" style="flex:1;padding:9px;border:.5px solid var(--bdr2);border-radius:var(--r);background:transparent;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);font-family:inherit">← 다시 입력</button>
+          <button onclick="applyUrlResult()" style="flex:2;padding:9px;background:var(--p);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">이 정보로 등록하기 →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📸 AI 사진 분석 -->
     <div id="amScan" style="display:none">
       <div class="scan-zone" id="scanZone" onclick="document.getElementById('scanFile').click()" style="min-height:130px;margin-bottom:10px">
         <input type="file" id="scanFile" accept="image/*" style="display:none" onchange="onScanFile(event)">
@@ -807,6 +871,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <button id="scanBtn" onclick="runScan()" disabled style="width:100%;padding:9px;background:var(--p);color:#fff;border:none;border-radius:var(--r);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px;opacity:.5;display:flex;align-items:center;justify-content:center;gap:6px"><span id="scanBtnTxt">사진을 먼저 업로드해주세요</span></button>
       <div id="scanResult"></div>
     </div>
+
     <div class="am-foot"><button class="am-cancel" onclick="closeAdd()">취소</button><button class="am-save" onclick="saveItem()">저장하기</button></div>
   </div>
 </div>
@@ -1767,7 +1832,136 @@ function openAdd(id){
 function resetIZ(h){const z=document.getElementById('iz');if(h&&mImgD){z.innerHTML=`<input type="file" id="imgf" accept="image/*" style="display:none" onchange="prevImg(event)"><img src="${mImgD}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--sur)">`;}else{z.innerHTML=`<input type="file" id="imgf" accept="image/*" style="display:none" onchange="prevImg(event)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>클릭하여 업로드</span>`;}}
 function closeAdd(){document.getElementById('addModal').classList.remove('open');}
 function prevImg(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{mImgD=ev.target.result;resetIZ(true);};r.readAsDataURL(f);}
-function switchAmTab(t){document.getElementById('tab-manual').classList.toggle('active',t==='manual');document.getElementById('tab-scan').classList.toggle('active',t==='scan');document.getElementById('amManual').style.display=t==='manual'?'block':'none';document.getElementById('amScan').style.display=t==='scan'?'block':'none';}
+function switchAmTab(t){
+  ['manual','url','scan'].forEach(tab=>{
+    document.getElementById('tab-'+tab)?.classList.toggle('active',tab===t);
+    const el=document.getElementById(tab==='manual'?'amManual':tab==='url'?'amUrl':'amScan');
+    if(el)el.style.display=tab===t?'block':'none';
+  });
+}
+
+/* ════ URL 링크 분석 ════ */
+let urlAnalysisResult = null;
+
+function checkUrlInput(){
+  const val=document.getElementById('urlInput').value.trim();
+  const btn=document.getElementById('urlAnalyzeBtn');
+  const txt=document.getElementById('urlAnalyzeTxt');
+  if(val.startsWith('http')){
+    btn.disabled=false;btn.style.opacity='1';
+    txt.textContent='🔍 AI로 제품 정보 분석하기';
+  } else {
+    btn.disabled=true;btn.style.opacity='.4';
+    txt.textContent='링크를 먼저 입력해주세요';
+  }
+}
+
+async function runUrlAnalysis(){
+  const url=document.getElementById('urlInput').value.trim();
+  const color=document.getElementById('urlColor').value.trim();
+  const size=document.getElementById('urlSize').value.trim();
+  const btn=document.getElementById('urlAnalyzeBtn');
+  const errEl=document.getElementById('urlError');
+
+  if(!url){showToast('⚠️ 링크를 입력해주세요');return;}
+  if(!color){showToast('⚠️ 구매한 색상을 입력해주세요');return;}
+
+  btn.disabled=true;
+  document.getElementById('urlAnalyzeTxt').innerHTML='<span class="spin"></span> AI가 제품 정보 분석 중...';
+  errEl.style.display='none';
+
+  try{
+    const res=await fetch('/api/ai',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'product_url',url,color,size})
+    });
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+
+    const raw=data.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
+    const result=JSON.parse(raw);
+    urlAnalysisResult={...result,url,size};
+    showUrlResult(result);
+  } catch(e){
+    errEl.style.display='block';
+    errEl.innerHTML=`⚠️ 분석 실패: ${e.message}<br><span style="font-size:11px;opacity:.8">링크가 올바른지 확인하거나, 직접 입력 탭을 이용해주세요.</span>`;
+    btn.disabled=false;
+    document.getElementById('urlAnalyzeTxt').textContent='🔄 다시 시도';
+  }
+}
+
+function showUrlResult(r){
+  document.getElementById('urlStep1').style.display='none';
+  document.getElementById('urlStep2').style.display='block';
+  // 신뢰도
+  const conf=r.confidence||80;
+  document.getElementById('urlConfPct').textContent=conf+'%';
+  document.getElementById('urlConfBar').style.width=conf+'%';
+  document.getElementById('urlConfBar').style.background=conf>=80?'var(--green)':conf>=60?'var(--amber)':'var(--red)';
+  // 헤더
+  const ci=CF[r.category]||{ico:'👚',lbl:r.category||'의류'};
+  const mainColor=r.colors?.[0];
+  document.getElementById('urlPreviewHead').innerHTML=`
+    <div style="width:44px;height:44px;border-radius:10px;background:${mainColor?mainColor.hex+'22':'var(--sur)'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:.5px solid var(--bdr)">${ci.ico}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">${r.name||'제품명 추출 실패'}</div>
+      <div style="font-size:11px;color:var(--muted)">${r.brand||''} ${r.price?'· ₩'+Number(r.price).toLocaleString():''}</div>
+    </div>`;
+  // 상세 정보
+  const rows=[
+    ['카테고리', ci.lbl],
+    ['색상', (r.colors||[]).map(c=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:50%;background:${c.hex};border:.5px solid rgba(0,0,0,.1)"></span>${c.name}</span>`).join(', ')||'-'],
+    ['사이즈', urlAnalysisResult?.size||'-'],
+    ['소재', (r.material||[]).join(', ')||'-'],
+    ['핏', (r.fit||[]).join(', ')||'-'],
+    ['계절', (r.season||[]).join(', ')||'-'],
+    ['스타일', (r.style||[]).join(', ')||'-'],
+    ['소매', (r.sleeve||[]).join(', ')||'-'],
+  ];
+  document.getElementById('urlPreviewBody').innerHTML=rows.map(([l,v])=>`
+    <div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:7px 9px">
+      <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${l}</div>
+      <div style="font-size:11px;font-weight:600">${v}</div>
+    </div>`).join('');
+}
+
+function resetUrlTab(){
+  urlAnalysisResult=null;
+  document.getElementById('urlStep1').style.display='block';
+  document.getElementById('urlStep2').style.display='none';
+  document.getElementById('urlAnalyzeTxt').textContent='🔍 AI로 제품 정보 분석하기';
+  document.getElementById('urlAnalyzeBtn').disabled=false;
+  document.getElementById('urlAnalyzeBtn').style.opacity='1';
+}
+
+function applyUrlResult(){
+  const r=urlAnalysisResult;if(!r)return;
+  // 직접 입력 탭으로 이동 후 필드 채우기
+  switchAmTab('manual');
+  document.getElementById('fN').value=r.name||'';
+  document.getElementById('fCa').value=r.category||'';
+  document.getElementById('fPr').value=r.price||'';
+  document.getElementById('fBr').value=r.brand||'';
+  document.getElementById('fUrl').value=r.url||'';
+  document.getElementById('fMe').value=r.size?`사이즈: ${r.size}`:'';
+  // 다중선택 필드 적용
+  MS_FIELDS.forEach(f=>{
+    const v=r[f];
+    msState[f]=Array.isArray(v)?v:(v?[v]:[]);
+    updateMSTrigger(f);
+    renderMSList(f,'');
+  });
+  // 색상 적용
+  mColors=[];
+  if(r.colors&&r.colors.length){
+    r.colors.forEach(c=>mColors.push({name:c.name,hex:c.hex||gH(c.name),role:c.role||'main'}));
+  } else if(r.color_name){
+    mColors=[{name:r.color_name,hex:gH(r.color_name),role:'main'}];
+  }
+  renderMC();
+  showToast('✅ 제품 정보가 입력됐어요! 확인 후 저장해주세요.');
+}
 function renderMC(){document.getElementById('colorWrap').innerHTML=mColors.map((c,i)=>{const txt=gT(c.hex);return`<span class="color-tag" style="background:${c.hex};color:${txt}">${c.name}<span style="font-size:9px;opacity:.7;margin-left:2px">(${c.role==='main'?'메인':'서브'})</span><span class="cx" onclick="rmC(${i})">×</span></span>`;}).join('');}
 function addColor(){const inp=document.getElementById('colorInput');const pk=document.getElementById('colorPicker');const role=document.getElementById('colorRole').value;const name=inp.value.trim();if(!name)return;const aH=gH(name);const hex=aH!=='#9ca3af'?aH:pk.value;mColors.push({name,hex,role});renderMC();inp.value='';inp.focus();}
 function rmC(i){mColors.splice(i,1);renderMC();}
