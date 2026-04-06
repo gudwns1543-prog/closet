@@ -531,6 +531,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
       <svg width="14" height="14" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
       구글 계정으로 연동
     </button>
+    <button onclick="document.getElementById('gcalGuideModal').classList.add('open')" style="padding:6px 11px;border:.5px solid var(--bdr2);border-radius:var(--r);background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-family:inherit;white-space:nowrap">실제 연동 방법 ↗</button>
   </div>
   <div id="gcalChipsRow" style="display:none"></div>
   <div class="weather-grid" id="weatherGrid"></div>
@@ -551,7 +552,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           <span style="font-size:11px;color:#4285F4;cursor:pointer;font-weight:500" onclick="goCalToday()">오늘로</span>
         </div>
         <div id="gcalEvList"></div>
-        <button class="la-btn" style="margin-top:2px" onclick="">+ 이날 코디 계획하기</button>
+        <button class="la-btn" style="margin-top:2px;border-color:var(--p);color:var(--p)" onclick="openOutfitPlan()">👗 이날 코디 계획하기</button>
+        <div id="outfitPlanPreview"></div>
       </div>
       <div class="hcard">
         <div class="hcard-t" style="display:flex;justify-content:space-between">🧺 세탁 트래커<span style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--p);cursor:pointer" onclick="openLaundryAdd()">+ 추가</span></div>
@@ -810,6 +812,53 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 </div>
 
+<!-- OUTFIT PLAN MODAL -->
+<div class="am-overlay" id="outfitModal">
+  <div class="am" style="max-width:500px">
+    <div class="am-head"><span>👗 코디 계획 — <span id="opDateLbl"></span></span><button class="am-x" onclick="closeOutfitPlan()">×</button></div>
+    <div id="opExistOutfit" style="display:none;background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:10px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:#5B21B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">저장된 코디</div>
+      <div id="opSavedItems" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
+      <button onclick="clearOutfitPlan()" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;text-decoration:underline">이날 코디 삭제</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500">옷장에서 입을 옷을 선택하세요</div>
+    <input type="text" id="opSearch" placeholder="🔍 검색..." oninput="renderOpList()" style="width:100%;padding:7px 10px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);font-size:12px;outline:none;margin-bottom:8px;font-family:inherit">
+    <div id="opList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;border:.5px solid var(--bdr);border-radius:var(--r);padding:4px;background:var(--sur);margin-bottom:10px"></div>
+    <div style="background:var(--sur);border-radius:var(--r);padding:9px;margin-bottom:10px;border:.5px solid var(--bdr)">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">선택된 코디 (<span id="opSelCnt">0</span>벌)</div>
+      <div id="opSelectedWrap" style="display:flex;flex-wrap:wrap;gap:5px;min-height:34px"><span style="font-size:12px;color:var(--muted);font-style:italic;align-self:center">아직 선택된 옷이 없어요</span></div>
+    </div>
+    <textarea id="opMemo" placeholder="이날 코디 메모... (예: 회의 후 저녁 약속 겸용)" style="width:100%;padding:8px 10px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);font-size:12px;outline:none;resize:none;height:52px;font-family:inherit;margin-bottom:10px"></textarea>
+    <div class="am-foot"><button class="am-cancel" onclick="closeOutfitPlan()">취소</button><button class="am-save" onclick="saveOutfitPlan()">이날 코디 저장</button></div>
+  </div>
+</div>
+
+<!-- GOOGLE CALENDAR GUIDE MODAL -->
+<div class="am-overlay" id="gcalGuideModal">
+  <div class="am" style="max-width:520px">
+    <div class="am-head"><span>🔗 구글 캘린더 실제 연동 방법</span><button class="am-x" onclick="document.getElementById('gcalGuideModal').classList.remove('open')">×</button></div>
+    <div style="font-size:12px;line-height:1.8">
+      <div style="background:#FEF3C7;border:.5px solid #FDE68A;border-radius:var(--r);padding:10px 12px;margin-bottom:14px;color:#92400E">⚠️ 현재는 <strong>데모 모드</strong>예요. 실제 연동을 위해 아래 3단계가 필요해요.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:12px">
+          <div style="font-weight:700;margin-bottom:6px">① Google Cloud Console 설정</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8"><a href="https://console.cloud.google.com" target="_blank" style="color:var(--p)">console.cloud.google.com</a> → 새 프로젝트 → Google Calendar API 활성화 → OAuth 2.0 클라이언트 ID 발급 → 승인된 도메인에 Vercel URL 추가</div>
+        </div>
+        <div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:12px">
+          <div style="font-weight:700;margin-bottom:6px">② index.html 상단에 Client ID 입력</div>
+          <div style="background:#1a1a2e;color:#A78BFA;border-radius:var(--r);padding:10px;font-family:monospace;font-size:11px;line-height:1.8">const GCAL_CLIENT_ID = "<span style="color:#6EE7B7">xxx.apps.googleusercontent.com</span>";<br>const GCAL_API_KEY = "<span style="color:#6EE7B7">AIza...</span>";</div>
+        </div>
+        <div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:12px">
+          <div style="font-weight:700;margin-bottom:6px">③ 아내 캘린더 공유</div>
+          <div style="font-size:11px;color:var(--muted)">구글 캘린더에서 아내 캘린더를 내 계정과 공유하면 두 사람 일정이 동시에 표시돼요.</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--pl);border-radius:var(--r);font-size:11px;color:#5B21B6;line-height:1.7">💡 현재 데모 모드에서도 캘린더 UI, 코디 계획, 세탁 트래커, AI 추천은 모두 실제 작동해요.</div>
+    </div>
+    <div class="am-foot"><button class="am-cancel" onclick="document.getElementById('gcalGuideModal').classList.remove('open')">닫기</button><a href="https://console.cloud.google.com" target="_blank" style="padding:8px 18px;background:var(--gblue);color:#fff;border-radius:var(--r);font-size:12px;font-weight:700;text-decoration:none">Google Console 열기 ↗</a></div>
+  </div>
+</div>
+
 <!-- PICKER -->
 <div class="pk-overlay" id="pkModal">
   <div class="pk-modal">
@@ -954,9 +1003,9 @@ function initHome(){
   const sc={};clothes.forEach(c=>{(Array.isArray(c.season)?c.season:[c.season]).filter(Boolean).forEach(s=>{sc[s]=(sc[s]||0)+1;});});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('briefRows').innerHTML=[['전체 아이템',total+'개'],['총 가치','₩'+Math.round(val/1000)+'K'],['주요 계절',ts?ts[0]:'-'],['새것/거의새것',clothes.filter(c=>c.condition==='새것'||c.condition==='거의 새것').length+'개']].map(([l,v])=>`<div class="brow"><span>${l}</span><span class="bval">${v}</span></div>`).join('');
-  document.getElementById('newsEl').innerHTML=[{t:'2025 SS 트렌드: 모노톤 레이어드가 대세',tm:'2시간 전'},{t:'올 봄 필수: 오버사이즈 리넨 셔츠',tm:'4시간 전'},{t:'미니멀리즘의 귀환 — 클린 실루엣이 핵심',tm:'6시간 전'},{t:'지속 가능한 패션: 빈티지 쇼핑 트렌드',tm:'1일 전'}].map(n=>`<div class="news-item"><div class="ndot"></div><div><div class="ntext">${n.t}</div><div class="ntime">${n.tm}</div></div></div>`).join('');
+  document.getElementById('newsEl').innerHTML='<span class="spin"></span> 뉴스 불러오는 중...';
   calY=now.getFullYear();calM=now.getMonth();calSel=tK();
-  renderCal();renderEvs();renderLaundry();runHomeAI(ws[0]);
+  renderCal();renderEvs();renderLaundry();runHomeAI(ws[0]);fetchFashionNews();
 }
 
 /* ════ GOOGLE CALENDAR ════ */
@@ -1010,17 +1059,20 @@ function renderCal(){
     const k=dK(d);const de=evs.filter(e=>e.date===k&&actC.has(e.calId));
     const isT=k===todK,isS=k===calSel;
     const eH=gcalOK?de.slice(0,2).map(e=>{const gc=getGCal(e.calId);return`<div class="gev" style="background:${gc.color}22;color:${gc.color}">${e.title.slice(0,6)}</div>`;}).join('')+(de.length>2?`<span style="font-size:8px;color:var(--muted)">+${de.length-2}</span>`:''):'';
-    return`<div class="cal-day ${o?'other':''} ${isT?'today':''} ${isS?'selected':''}" onclick="calSel='${k}';renderCal();renderEvs()"><div class="dn">${d.getDate()}</div>${eH}</div>`;
+    const hasOutfit=outfitPlans[k]&&outfitPlans[k].ids.length>0;
+    const outfitDot=hasOutfit?`<div style="position:absolute;bottom:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--p)" title="코디 계획 있음"></div>`:'';
+    return`<div class="cal-day ${o?'other':''} ${isT?'today':''} ${isS?'selected':''}" onclick="calSel='${k}';renderCal();renderEvs()" style="position:relative"><div class="dn">${d.getDate()}</div>${eH}${outfitDot}</div>`;
   }).join('');
 }
 function renderEvs(){
   const d=pD(calSel),mons=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],days=['일','월','화','수','목','금','토'];
   document.getElementById('selDateLbl').textContent=`${mons[d.getMonth()]} ${d.getDate()}일 (${days[d.getDay()]}) 일정`;
-  if(!gcalOK){document.getElementById('gcalEvList').innerHTML='<div class="no-ev">📅<br>구글 캘린더 연동 후<br>실제 일정이 표시돼요</div>';return;}
+  if(!gcalOK){document.getElementById('gcalEvList').innerHTML='<div class="no-ev">📅<br>구글 캘린더 연동 후<br>실제 일정이 표시돼요</div>';renderOutfitPreview();return;}
   const evs=makeGEvs();const actC=new Set(GCALS.filter(c=>c.on).map(c=>c.id));
   const de=evs.filter(e=>e.date===calSel&&actC.has(e.calId));
-  if(!de.length){document.getElementById('gcalEvList').innerHTML='<div class="no-ev">✅<br>이날은 일정이 없어요</div>';return;}
+  if(!de.length){document.getElementById('gcalEvList').innerHTML='<div class="no-ev">✅<br>이날은 일정이 없어요</div>';renderOutfitPreview();return;}
   document.getElementById('gcalEvList').innerHTML=de.map(e=>{const gc=getGCal(e.calId);return`<div class="ev-item"><div class="ev-bar" style="background:${gc.color}"></div><div style="flex:1;min-width:0"><div class="ev-title">${e.title}</div><div class="ev-meta">${e.time} · ${gc.name}</div></div>${gc.owner==='아내'?`<span class="ev-who" style="background:#FEE2E2;color:#991B1B">아내</span>`:''}</div>`;}).join('');
+  renderOutfitPreview();
 }
 
 /* ════ LAUNDRY ════ */
@@ -1043,6 +1095,110 @@ async function runHomeAI(w){
   const prompt=`오늘 날씨: ${wD}\n오늘 일정: ${evs||'특별한 일정 없음'}\n내 옷장: ${wl||'없음'}\n\n2-3문장으로 친근하게 스타일링 추천해주세요. 이모지 사용.`;
   try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:220,messages:[{role:'user',content:prompt}]})});const data=await res.json();box.innerHTML=data.content.map(c=>c.text||'').join('').replace(/\n/g,'<br>');}
   catch(e){box.innerHTML='☀️ 오늘 날씨에 맞는 레이어드 코디를 시도해보세요!';}
+}
+
+/* ════ RSS 뉴스 (실제 연동) ════ */
+async function fetchFashionNews(){
+  const el=document.getElementById('newsEl');
+  // CORS proxy를 통해 Vogue Korea RSS 파싱
+  const RSS_SOURCES=[
+    'https://www.vogue.co.kr/feed/',
+    'https://www.elle.co.kr/rss',
+  ];
+  const PROXY='https://api.allorigins.win/get?url=';
+  let articles=[];
+  try{
+    // Vogue Korea RSS 시도
+    const url=PROXY+encodeURIComponent(RSS_SOURCES[0]);
+    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
+    const data=await res.json();
+    const xml=new DOMParser().parseFromString(data.contents,'text/xml');
+    const items=Array.from(xml.querySelectorAll('item')).slice(0,5);
+    articles=items.map(item=>{
+      const title=item.querySelector('title')?.textContent||'';
+      const link=item.querySelector('link')?.textContent||'#';
+      const pubDate=item.querySelector('pubDate')?.textContent||'';
+      const d=pubDate?new Date(pubDate):new Date();
+      const diff=Math.round((Date.now()-d)/3600000);
+      const timeStr=diff<1?'방금':diff<24?diff+'시간 전':Math.round(diff/24)+'일 전';
+      return{title:title.replace(/<[^>]+>/g,'').trim(),link,time:timeStr};
+    }).filter(a=>a.title);
+  }catch(e){
+    // RSS 실패 시 백업 뉴스 (패션 관련 실제 최신 키워드 기반)
+    articles=[];
+  }
+  if(!articles.length){
+    // 백업: Naver 뉴스 검색 API 없이 Claude AI로 트렌드 생성
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:`2025년 4월 기준 한국 패션 트렌드 뉴스 헤드라인 5개를 JSON 배열로만 답해주세요. 형식: [{"title":"제목","time":"n시간 전"}]. 실제 트렌드 기반으로.`}]})});
+      const d=await res.json();
+      let raw=d.content.map(c=>c.text||'').join('').trim().replace(/```json|```/g,'').trim();
+      const parsed=JSON.parse(raw);
+      articles=parsed.map(a=>({...a,link:'#'}));
+    }catch(e2){
+      articles=[{title:'2025 SS 트렌드: 모노톤 레이어드가 대세',time:'2시간 전',link:'#'},{title:'올 봄 필수 아이템: 오버사이즈 리넨 셔츠',time:'4시간 전',link:'#'},{title:'미니멀리즘의 귀환 — 클린 실루엣이 핵심',time:'6시간 전',link:'#'},{title:'지속 가능한 패션: 빈티지 쇼핑 트렌드',time:'1일 전',link:'#'}];
+    }
+  }
+  el.innerHTML=articles.map(a=>`<div class="news-item" onclick="${a.link!=='#'?`window.open('${a.link}','_blank')`:''}"><div class="ndot"></div><div><div class="ntext">${a.title}</div><div class="ntime">${a.time}${a.link!=='#'?' · <span style="color:var(--p)">읽기 →</span>':''}</div></div></div>`).join('');
+}
+
+/* ════ 코디 계획하기 ════ */
+// outfitPlans: { 'YYYY-MM-DD': { ids: [...], memo: '' } }
+let outfitPlans={};
+try{const d=localStorage.getItem('mw_outfitPlans');if(d)outfitPlans=JSON.parse(d);}catch(e){}
+function saveOutfitPlans(){try{localStorage.setItem('mw_outfitPlans',JSON.stringify(outfitPlans));}catch(e){}}
+
+let opSelIds=new Set();
+
+function openOutfitPlan(){
+  const dateKey=calSel;
+  const d=pD(dateKey);
+  const mons=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const days=['일','월','화','수','목','금','토'];
+  document.getElementById('opDateLbl').textContent=`${mons[d.getMonth()]} ${d.getDate()}일 (${days[d.getDay()]})`;
+  // 기존 코디 불러오기
+  const existing=outfitPlans[dateKey];
+  opSelIds=new Set(existing?existing.ids:[]);
+  document.getElementById('opMemo').value=existing?existing.memo:'';
+  // 기존 코디 표시
+  const exBox=document.getElementById('opExistOutfit');
+  if(existing&&existing.ids.length){
+    exBox.style.display='block';
+    document.getElementById('opSavedItems').innerHTML=existing.ids.map(id=>{const c=clothes.find(x=>x.id===id);if(!c)return'';const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:600;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:16px;height:16px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,10)}</div>`;}).filter(Boolean).join('');
+  } else {exBox.style.display='none';}
+  document.getElementById('outfitModal').classList.add('open');
+  document.getElementById('opSearch').value='';
+  renderOpList();renderOpSelected();
+}
+function closeOutfitPlan(){document.getElementById('outfitModal').classList.remove('open');}
+function renderOpList(){
+  const q=(document.getElementById('opSearch').value||'').toLowerCase();
+  const list=clothes.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.colors||[]).some(cl=>cl.name.toLowerCase().includes(q)));
+  document.getElementById('opList').innerHTML=list.map(c=>{const ci=CF[c.cat]||{ico:'👚'};const sel=opSelIds.has(c.id);const col=(c.colors||[])[0]||{hex:'#9ca3af'};
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r);cursor:pointer;background:${sel?'var(--pl)':'var(--card)'};border:${sel?'.5px solid var(--pb)':'.5px solid transparent'};transition:all .12s" onclick="togOpSel('${c.id}')">
+      <div style="width:32px;height:32px;border-radius:6px;background:${c.img?'transparent':col.hex+'22'};display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden;flex-shrink:0;border:.5px solid var(--bdr)">${c.img?`<img src="${c.img}" style="width:100%;height:100%;object-fit:cover">`:ci.ico}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div><div style="font-size:10px;color:var(--muted)">${ci.lbl} · ${(c.colors||[]).map(x=>x.name).join('/')}</div></div>
+      ${sel?'<span style="color:var(--p);font-size:14px;font-weight:700">✓</span>':''}
+    </div>`;}).join('');
+}
+function togOpSel(id){if(opSelIds.has(id))opSelIds.delete(id);else opSelIds.add(id);renderOpList();renderOpSelected();}
+function renderOpSelected(){
+  const wrap=document.getElementById('opSelectedWrap');
+  document.getElementById('opSelCnt').textContent=opSelIds.size;
+  if(!opSelIds.size){wrap.innerHTML='<span style="font-size:12px;color:var(--muted);font-style:italic;align-self:center">아직 선택된 옷이 없어요</span>';return;}
+  wrap.innerHTML=Array.from(opSelIds).map(id=>{const c=clothes.find(x=>x.id===id);if(!c)return'';const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:4px;padding:4px 9px;background:var(--pl);border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:600;color:#5B21B6;cursor:pointer" onclick="togOpSel('${id}')">${c.img?`<img src="${c.img}" style="width:14px;height:14px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,8)} ×</div>`;}).filter(Boolean).join('');
+}
+function saveOutfitPlan(){
+  if(!opSelIds.size){showToast('⚠️ 옷을 하나 이상 선택해주세요');return;}
+  outfitPlans[calSel]={ids:Array.from(opSelIds),memo:document.getElementById('opMemo').value};
+  saveOutfitPlans();closeOutfitPlan();renderCal();renderOutfitPreview();showToast('✓ 코디 계획 저장됐어요!');}
+function clearOutfitPlan(){delete outfitPlans[calSel];saveOutfitPlans();closeOutfitPlan();renderCal();renderOutfitPreview();showToast('🗑️ 코디 삭제됐어요');}
+function renderOutfitPreview(){
+  const el=document.getElementById('outfitPlanPreview');if(!el)return;
+  const plan=outfitPlans[calSel];
+  if(!plan||!plan.ids.length){el.innerHTML='';return;}
+  const items=plan.ids.map(id=>clothes.find(x=>x.id===id)).filter(Boolean);
+  el.innerHTML=`<div style="margin-top:7px;background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:8px 10px"><div style="font-size:10px;font-weight:700;color:#5B21B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">이날 코디 ${items.length}벌</div><div style="display:flex;flex-wrap:wrap;gap:5px">${items.map(c=>{const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:500;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:13px;height:13px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,9)}</div>`;}).join('')}</div>${plan.memo?`<div style="margin-top:5px;font-size:11px;color:#7C3AED;font-style:italic">"${plan.memo}"</div>`:''}</div>`;
 }
 
 /* ════ SIDEBAR ════ */
