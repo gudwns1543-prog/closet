@@ -552,7 +552,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
           <span style="font-size:11px;color:#4285F4;cursor:pointer;font-weight:500" onclick="goCalToday()">오늘로</span>
         </div>
         <div id="gcalEvList"></div>
-        <button class="la-btn" style="margin-top:2px;border-color:var(--p);color:var(--p)" onclick="openOutfitPlan()">👗 이날 코디 계획하기</button>
         <div id="outfitPlanPreview"></div>
       </div>
       <div class="hcard">
@@ -812,24 +811,37 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 </div>
 
-<!-- OUTFIT PLAN MODAL -->
+<!-- OUTFIT PLAN MODAL (일정별) -->
 <div class="am-overlay" id="outfitModal">
-  <div class="am" style="max-width:500px">
-    <div class="am-head"><span>👗 코디 계획 — <span id="opDateLbl"></span></span><button class="am-x" onclick="closeOutfitPlan()">×</button></div>
-    <div id="opExistOutfit" style="display:none;background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:10px;margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;color:#5B21B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">저장된 코디</div>
-      <div id="opSavedItems" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
-      <button onclick="clearOutfitPlan()" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;text-decoration:underline">이날 코디 삭제</button>
+  <div class="am" style="max-width:520px">
+    <div class="am-head">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:14px;font-weight:700">👗 코디 계획</span>
+        <span id="opEventLabel" style="font-size:11px;color:var(--muted);font-weight:400"></span>
+      </div>
+      <button class="am-x" onclick="closeOutfitPlan()">×</button>
     </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500">옷장에서 입을 옷을 선택하세요</div>
+    <!-- 이미 저장된 코디 표시 -->
+    <div id="opExistBox" style="display:none;background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:10px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:#5B21B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">저장된 코디</div>
+      <div id="opExistItems" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
+      <div id="opExistMemo" style="font-size:11px;color:#7C3AED;font-style:italic;margin-bottom:7px"></div>
+      <button onclick="clearThisOutfit()" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit">이 일정 코디 삭제</button>
+    </div>
+    <!-- 옷 검색 & 선택 -->
+    <div style="font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:500">이 일정에 입을 옷을 선택하세요 (복수 가능)</div>
     <input type="text" id="opSearch" placeholder="🔍 검색..." oninput="renderOpList()" style="width:100%;padding:7px 10px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);font-size:12px;outline:none;margin-bottom:8px;font-family:inherit">
-    <div id="opList" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;border:.5px solid var(--bdr);border-radius:var(--r);padding:4px;background:var(--sur);margin-bottom:10px"></div>
+    <div id="opList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;border:.5px solid var(--bdr);border-radius:var(--r);padding:4px;background:var(--sur);margin-bottom:10px"></div>
+    <!-- 선택된 코디 -->
     <div style="background:var(--sur);border-radius:var(--r);padding:9px;margin-bottom:10px;border:.5px solid var(--bdr)">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">선택된 코디 (<span id="opSelCnt">0</span>벌)</div>
-      <div id="opSelectedWrap" style="display:flex;flex-wrap:wrap;gap:5px;min-height:34px"><span style="font-size:12px;color:var(--muted);font-style:italic;align-self:center">아직 선택된 옷이 없어요</span></div>
+      <div id="opSelectedWrap" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px"><span style="font-size:12px;color:var(--muted);font-style:italic;align-self:center">아직 선택된 옷이 없어요</span></div>
     </div>
-    <textarea id="opMemo" placeholder="이날 코디 메모... (예: 회의 후 저녁 약속 겸용)" style="width:100%;padding:8px 10px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);font-size:12px;outline:none;resize:none;height:52px;font-family:inherit;margin-bottom:10px"></textarea>
-    <div class="am-foot"><button class="am-cancel" onclick="closeOutfitPlan()">취소</button><button class="am-save" onclick="saveOutfitPlan()">이날 코디 저장</button></div>
+    <textarea id="opMemo" placeholder="코디 메모... (예: 격식체 + 편한 신발)" style="width:100%;padding:8px 10px;border:.5px solid var(--bdr2);border-radius:var(--r);background:var(--sur);font-size:12px;outline:none;resize:none;height:46px;font-family:inherit;margin-bottom:10px"></textarea>
+    <div class="am-foot">
+      <button class="am-cancel" onclick="closeOutfitPlan()">취소</button>
+      <button class="am-save" onclick="saveOutfitPlan()">이 일정 코디 저장</button>
+    </div>
   </div>
 </div>
 
@@ -1144,7 +1156,11 @@ function renderCal(){
     const k=dK(d);const de=evs.filter(e=>e.date===k&&actC.has(e.calId));
     const isT=k===todK,isS=k===calSel;
     const eH=gcalOK?de.slice(0,2).map(e=>{const gc=getGCal(e.calId);return`<div class="gev" style="background:${gc.color}22;color:${gc.color}">${e.title.slice(0,6)}</div>`;}).join('')+(de.length>2?`<span style="font-size:8px;color:var(--muted)">+${de.length-2}</span>`:''):'';
-    const hasOutfit=outfitPlans[k]&&outfitPlans[k].ids.length>0;
+    const dayPlanCheck=outfitPlans[k];
+    const hasOutfit=dayPlanCheck&&(
+      (dayPlanCheck.freeOutfit&&dayPlanCheck.freeOutfit.ids.length>0)||
+      Object.values(dayPlanCheck.events||{}).some(p=>p.ids.length>0)
+    );
     const outfitDot=hasOutfit?`<div style="position:absolute;bottom:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--p)" title="코디 계획 있음"></div>`:'';
     return`<div class="cal-day ${o?'other':''} ${isT?'today':''} ${isS?'selected':''}" onclick="calSel='${k}';renderCal();renderEvs()" style="position:relative"><div class="dn">${d.getDate()}</div>${eH}${outfitDot}</div>`;
   }).join('');
@@ -1227,64 +1243,205 @@ async function fetchFashionNews(){
   el.innerHTML=articles.map(a=>`<div class="news-item" onclick="${a.link!=='#'?`window.open('${a.link}','_blank')`:''}"><div class="ndot"></div><div><div class="ntext">${a.title}</div><div class="ntime">${a.time}${a.link!=='#'?' · <span style="color:var(--p)">읽기 →</span>':''}</div></div></div>`).join('');
 }
 
-/* ════ 코디 계획하기 ════ */
-// outfitPlans: { 'YYYY-MM-DD': { ids: [...], memo: '' } }
+/* ════ 코디 계획하기 (일정별) ════
+   구조: outfitPlans = {
+     'YYYY-MM-DD': {
+       events: {
+         'eventKey': { ids:[...], memo:'' }
+       },
+       freeOutfit: { ids:[...], memo:'' }  // 일정 없는 날 자유 코디
+     }
+   }
+══════════════════════════════════*/
 let outfitPlans={};
-try{const d=localStorage.getItem('mw_outfitPlans');if(d)outfitPlans=JSON.parse(d);}catch(e){}
-function saveOutfitPlans(){try{localStorage.setItem('mw_outfitPlans',JSON.stringify(outfitPlans));}catch(e){}}
+try{const d=localStorage.getItem('mw_outfitPlans_v2');if(d)outfitPlans=JSON.parse(d);}catch(e){}
+function saveOutfitPlans(){try{localStorage.setItem('mw_outfitPlans_v2',JSON.stringify(outfitPlans));}catch(e){}}
 
+// 현재 모달에서 편집 중인 이벤트 키
+let opCurDateKey='';
+let opCurEventKey='';
 let opSelIds=new Set();
 
-function openOutfitPlan(){
-  const dateKey=calSel;
-  const d=pD(dateKey);
+/* 일정 이벤트 key 생성 */
+function evKey(ev){return`${ev.date}_${ev.title.replace(/\s/g,'_').slice(0,20)}_${ev.time||'allday'}`;}
+
+/* renderEvs 업그레이드 — 각 일정 아래 코디 버튼 & 미리보기 표시 */
+function renderEvs(){
+  const d=pD(calSel);
   const mons=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   const days=['일','월','화','수','목','금','토'];
-  document.getElementById('opDateLbl').textContent=`${mons[d.getMonth()]} ${d.getDate()}일 (${days[d.getDay()]})`;
-  // 기존 코디 불러오기
-  const existing=outfitPlans[dateKey];
+  document.getElementById('selDateLbl').textContent=`${mons[d.getMonth()]} ${d.getDate()}일 (${days[d.getDay()]}) 일정`;
+
+  const evListEl=document.getElementById('gcalEvList');
+  const previewEl=document.getElementById('outfitPlanPreview');
+
+  const evs=makeGEvs();
+  const actC=new Set(GCALS.filter(c=>c.on).map(c=>c.id));
+  const de=evs.filter(e=>e.date===calSel&&actC.has(e.calId));
+  const dayPlan=outfitPlans[calSel]||{events:{},freeOutfit:null};
+
+  if(!gcalOK){
+    evListEl.innerHTML='<div class="no-ev">📅<br>구글 캘린더 연동 후<br>실제 일정이 표시돼요</div>';
+    // 연동 전엔 날짜 단위 자유 코디 버튼 표시
+    renderFreeOutfitSection(previewEl, dayPlan);
+    return;
+  }
+
+  if(!de.length){
+    evListEl.innerHTML='<div class="no-ev">✅<br>이날은 일정이 없어요</div>';
+    renderFreeOutfitSection(previewEl, dayPlan);
+    return;
+  }
+
+  // 일정별 코디 UI 렌더
+  evListEl.innerHTML=de.map(ev=>{
+    const gc=getGCal(ev.calId);
+    const ek=evKey(ev);
+    const evPlan=dayPlan.events?.[ek];
+    const hasOutfit=evPlan&&evPlan.ids.length>0;
+    const outfitItems=hasOutfit?evPlan.ids.map(id=>clothes.find(x=>x.id===id)).filter(Boolean):[];
+
+    return`<div class="ev-item" style="flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden">
+      <!-- 일정 헤더 -->
+      <div style="display:flex;align-items:center;gap:6px;padding:7px 8px">
+        <div class="ev-bar" style="background:${gc.color};height:auto;align-self:stretch"></div>
+        <div style="flex:1;min-width:0">
+          <div class="ev-title">${ev.title}</div>
+          <div class="ev-meta">${ev.time}${ev.calName?' · '+ev.calName:''}</div>
+        </div>
+        ${gc.owner==='아내'||ev.calId==='wife'?`<span class="ev-who" style="background:#FEE2E2;color:#991B1B">아내</span>`:''}
+        <button onclick="openOutfitPlan('${ek.replace(/'/g,"\\'")}','${ev.title.replace(/'/g,"\\'")}','${ev.time||'종일'}')" style="display:flex;align-items:center;gap:3px;padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;border:.5px solid ${hasOutfit?'var(--pb)':'var(--bdr2)'};background:${hasOutfit?'var(--pl)':'transparent'};color:${hasOutfit?'#5B21B6':'var(--muted)'};transition:all .15s" onmouseover="this.style.borderColor='var(--p)';this.style.color='var(--p)'" onmouseout="this.style.borderColor='${hasOutfit?'var(--pb)':'var(--bdr2)'}';this.style.color='${hasOutfit?'#5B21B6':'var(--muted)'}'">
+          ${hasOutfit?'✓ 코디':'+ 코디'}
+        </button>
+      </div>
+      <!-- 코디 미리보기 -->
+      ${hasOutfit?`<div style="padding:5px 8px 8px 18px;border-top:.5px solid var(--sur)">
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:${evPlan.memo?'4px':'0'}">
+          ${outfitItems.map(c=>{const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:3px;padding:2px 8px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:10px;font-weight:600;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:12px;height:12px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,10)}</div>`;}).join('')}
+        </div>
+        ${evPlan.memo?`<div style="font-size:10px;color:#7C3AED;font-style:italic">"${evPlan.memo}"</div>`:''}
+      </div>`:''}
+    </div>`;
+  }).join('');
+
+  // 하단 자유 코디 섹션 (일정과 무관한 외출 코디)
+  renderFreeOutfitSection(previewEl, dayPlan);
+}
+
+function renderFreeOutfitSection(el, dayPlan){
+  if(!el)return;
+  const free=dayPlan?.freeOutfit;
+  const hasF=free&&free.ids.length>0;
+  const fItems=hasF?free.ids.map(id=>clothes.find(x=>x.id===id)).filter(Boolean):[];
+  el.innerHTML=`<div style="margin-top:6px">
+    <button onclick="openOutfitPlan('__free__','하루 전체 코디','자유')" style="width:100%;padding:6px;border:.5px dashed ${hasF?'var(--p)':'var(--bdr2)'};border-radius:var(--r);background:${hasF?'var(--pl)':'transparent'};font-size:11px;cursor:pointer;color:${hasF?'var(--p)':'var(--muted)'};font-family:inherit;font-weight:600;transition:all .15s;text-align:left;display:flex;align-items:center;gap:5px">
+      <span>${hasF?'✓':'+'}</span><span>${hasF?'하루 전체 코디 저장됨':'하루 전체 코디 계획하기'}</span>
+    </button>
+    ${hasF?`<div style="padding:6px 8px;background:var(--pl);border:.5px solid var(--pb);border-radius:0 0 var(--r) var(--r);border-top:none;margin-top:-4px">
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${fItems.map(c=>{const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:3px;padding:2px 8px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:10px;font-weight:600;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:12px;height:12px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,10)}</div>`;}).join('')}</div>
+      ${free.memo?`<div style="font-size:10px;color:#7C3AED;font-style:italic;margin-top:4px">"${free.memo}"</div>`:''}
+    </div>`:''}
+  </div>`;
+}
+
+/* 모달 열기 */
+function openOutfitPlan(eventKey, eventTitle, eventTime){
+  opCurDateKey=calSel;
+  opCurEventKey=eventKey;
+
+  // 헤더 라벨
+  const d=pD(calSel);
+  const mons=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const days=['일','월','화','수','목','금','토'];
+  const dateStr=`${mons[d.getMonth()]} ${d.getDate()}일 (${days[d.getDay()]})`;
+  document.getElementById('opEventLabel').textContent=
+    eventKey==='__free__'
+      ? `📅 ${dateStr} · 하루 전체 코디`
+      : `📅 ${dateStr} · ${eventTitle} (${eventTime})`;
+
+  // 기존 코디 로드
+  const dayPlan=outfitPlans[calSel]||{events:{},freeOutfit:null};
+  const existing=eventKey==='__free__'?dayPlan.freeOutfit:dayPlan.events?.[eventKey];
   opSelIds=new Set(existing?existing.ids:[]);
   document.getElementById('opMemo').value=existing?existing.memo:'';
-  // 기존 코디 표시
-  const exBox=document.getElementById('opExistOutfit');
+
+  // 기존 코디 박스
+  const exBox=document.getElementById('opExistBox');
   if(existing&&existing.ids.length){
     exBox.style.display='block';
-    document.getElementById('opSavedItems').innerHTML=existing.ids.map(id=>{const c=clothes.find(x=>x.id===id);if(!c)return'';const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:600;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:16px;height:16px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,10)}</div>`;}).filter(Boolean).join('');
-  } else {exBox.style.display='none';}
+    document.getElementById('opExistItems').innerHTML=existing.ids.map(id=>{
+      const c=clothes.find(x=>x.id===id);if(!c)return'';
+      const ci=CF[c.cat]||{ico:'👚'};
+      return`<div style="display:flex;align-items:center;gap:3px;padding:3px 8px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:600;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:14px;height:14px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,12)}</div>`;
+    }).filter(Boolean).join('');
+    document.getElementById('opExistMemo').textContent=existing.memo?`"${existing.memo}"`:'';
+  } else exBox.style.display='none';
+
   document.getElementById('outfitModal').classList.add('open');
   document.getElementById('opSearch').value='';
   renderOpList();renderOpSelected();
 }
+
 function closeOutfitPlan(){document.getElementById('outfitModal').classList.remove('open');}
+
 function renderOpList(){
   const q=(document.getElementById('opSearch').value||'').toLowerCase();
   const list=clothes.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.colors||[]).some(cl=>cl.name.toLowerCase().includes(q)));
-  document.getElementById('opList').innerHTML=list.map(c=>{const ci=CF[c.cat]||{ico:'👚'};const sel=opSelIds.has(c.id);const col=(c.colors||[])[0]||{hex:'#9ca3af'};
+  document.getElementById('opList').innerHTML=list.map(c=>{
+    const ci=CF[c.cat]||{ico:'👚'};const sel=opSelIds.has(c.id);const col=(c.colors||[])[0]||{hex:'#9ca3af'};
     return`<div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r);cursor:pointer;background:${sel?'var(--pl)':'var(--card)'};border:${sel?'.5px solid var(--pb)':'.5px solid transparent'};transition:all .12s" onclick="togOpSel('${c.id}')">
       <div style="width:32px;height:32px;border-radius:6px;background:${c.img?'transparent':col.hex+'22'};display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden;flex-shrink:0;border:.5px solid var(--bdr)">${c.img?`<img src="${c.img}" style="width:100%;height:100%;object-fit:cover">`:ci.ico}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div><div style="font-size:10px;color:var(--muted)">${ci.lbl} · ${(c.colors||[]).map(x=>x.name).join('/')}</div></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${ci.lbl} · ${(c.colors||[]).map(x=>x.name).join('/')}</div>
+      </div>
       ${sel?'<span style="color:var(--p);font-size:14px;font-weight:700">✓</span>':''}
-    </div>`;}).join('');
+    </div>`;
+  }).join('');
 }
-function togOpSel(id){if(opSelIds.has(id))opSelIds.delete(id);else opSelIds.add(id);renderOpList();renderOpSelected();}
+
+function togOpSel(id){
+  if(opSelIds.has(id))opSelIds.delete(id);else opSelIds.add(id);
+  renderOpList();renderOpSelected();
+}
+
 function renderOpSelected(){
   const wrap=document.getElementById('opSelectedWrap');
   document.getElementById('opSelCnt').textContent=opSelIds.size;
   if(!opSelIds.size){wrap.innerHTML='<span style="font-size:12px;color:var(--muted);font-style:italic;align-self:center">아직 선택된 옷이 없어요</span>';return;}
-  wrap.innerHTML=Array.from(opSelIds).map(id=>{const c=clothes.find(x=>x.id===id);if(!c)return'';const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:4px;padding:4px 9px;background:var(--pl);border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:600;color:#5B21B6;cursor:pointer" onclick="togOpSel('${id}')">${c.img?`<img src="${c.img}" style="width:14px;height:14px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,8)} ×</div>`;}).filter(Boolean).join('');
+  wrap.innerHTML=Array.from(opSelIds).map(id=>{
+    const c=clothes.find(x=>x.id===id);if(!c)return'';
+    const ci=CF[c.cat]||{ico:'👚'};
+    return`<div style="display:flex;align-items:center;gap:4px;padding:4px 9px;background:var(--pl);border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:600;color:#5B21B6;cursor:pointer" onclick="togOpSel('${id}')">${c.img?`<img src="${c.img}" style="width:14px;height:14px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,9)} ×</div>`;
+  }).filter(Boolean).join('');
 }
+
 function saveOutfitPlan(){
   if(!opSelIds.size){showToast('⚠️ 옷을 하나 이상 선택해주세요');return;}
-  outfitPlans[calSel]={ids:Array.from(opSelIds),memo:document.getElementById('opMemo').value};
-  saveOutfitPlans();closeOutfitPlan();renderCal();renderOutfitPreview();showToast('✓ 코디 계획 저장됐어요!');}
-function clearOutfitPlan(){delete outfitPlans[calSel];saveOutfitPlans();closeOutfitPlan();renderCal();renderOutfitPreview();showToast('🗑️ 코디 삭제됐어요');}
-function renderOutfitPreview(){
-  const el=document.getElementById('outfitPlanPreview');if(!el)return;
-  const plan=outfitPlans[calSel];
-  if(!plan||!plan.ids.length){el.innerHTML='';return;}
-  const items=plan.ids.map(id=>clothes.find(x=>x.id===id)).filter(Boolean);
-  el.innerHTML=`<div style="margin-top:7px;background:var(--pl);border:.5px solid var(--pb);border-radius:var(--r);padding:8px 10px"><div style="font-size:10px;font-weight:700;color:#5B21B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">이날 코디 ${items.length}벌</div><div style="display:flex;flex-wrap:wrap;gap:5px">${items.map(c=>{const ci=CF[c.cat]||{ico:'👚'};return`<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:#fff;border-radius:20px;border:.5px solid var(--pb);font-size:11px;font-weight:500;color:#5B21B6">${c.img?`<img src="${c.img}" style="width:13px;height:13px;object-fit:cover;border-radius:50%">`:ci.ico} ${c.name.slice(0,9)}</div>`;}).join('')}</div>${plan.memo?`<div style="margin-top:5px;font-size:11px;color:#7C3AED;font-style:italic">"${plan.memo}"</div>`:''}</div>`;
+  if(!outfitPlans[opCurDateKey])outfitPlans[opCurDateKey]={events:{},freeOutfit:null};
+  const plan={ids:Array.from(opSelIds),memo:document.getElementById('opMemo').value};
+  if(opCurEventKey==='__free__'){
+    outfitPlans[opCurDateKey].freeOutfit=plan;
+  } else {
+    if(!outfitPlans[opCurDateKey].events)outfitPlans[opCurDateKey].events={};
+    outfitPlans[opCurDateKey].events[opCurEventKey]=plan;
+  }
+  saveOutfitPlans();closeOutfitPlan();renderCal();renderEvs();
+  showToast('✓ 코디 저장됐어요!');
 }
+
+function clearThisOutfit(){
+  if(!outfitPlans[opCurDateKey])return;
+  if(opCurEventKey==='__free__'){
+    outfitPlans[opCurDateKey].freeOutfit=null;
+  } else {
+    delete outfitPlans[opCurDateKey].events?.[opCurEventKey];
+  }
+  saveOutfitPlans();closeOutfitPlan();renderCal();renderEvs();
+  showToast('🗑️ 코디 삭제됐어요');
+}
+
+function renderOutfitPreview(){renderEvs();}// 하위호환용
 
 /* ════ SIDEBAR ════ */
 function togSB(){sbCol=!sbCol;document.getElementById('sidebar').classList.toggle('col',sbCol);}
