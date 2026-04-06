@@ -1,8 +1,6 @@
-
 export const config = { runtime: 'edge' };
 
 export default async function handler(req) {
-  // CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -19,10 +17,10 @@ export default async function handler(req) {
     let finalMessages = messages || [];
     let finalMaxTokens = max_tokens || 1000;
 
-    // 제품 URL 분석 모드
     if (type === 'product_url' && url) {
-      // 1단계: 웹페이지 내용 가져오기
       let pageContent = '';
+      let productImageUrl = ''; // 제품 이미지 URL 추출
+
       try {
         const pageRes = await fetch(url, {
           headers: {
@@ -33,14 +31,20 @@ export default async function handler(req) {
           signal: AbortSignal.timeout(8000),
         });
         const html = await pageRes.text();
-        // HTML 태그 제거 후 핵심 텍스트만 추출 (너무 길면 앞부분만)
+
+        // og:image 메타태그에서 제품 대표 이미지 추출
+        const ogImgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+          || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+        if (ogImgMatch) productImageUrl = ogImgMatch[1];
+
+        // 텍스트 추출
         pageContent = html
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
           .replace(/<[^>]+>/g, ' ')
           .replace(/\s+/g, ' ')
           .trim()
-          .slice(0, 6000); // 6000자 제한
+          .slice(0, 6000);
       } catch (e) {
         pageContent = `URL: ${url} (페이지 직접 접근 실패 — URL과 브랜드명으로 추론)`;
       }
@@ -48,17 +52,18 @@ export default async function handler(req) {
       finalMaxTokens = 800;
       finalMessages = [{
         role: 'user',
-        content: `다음은 쇼핑몰 제품 페이지 내용이에요. 제품 정보를 분석해서 JSON만 출력해주세요 (다른 텍스트 없이).
+        content: `다음은 쇼핑몰 제품 페이지 내용이에요. 제품 정보를 분석해서 JSON만 출력해주세요.
 
 구매자 입력:
 - 색상: ${color || '미입력'}
 - 사이즈: ${size || '미입력'}
 - URL: ${url}
+- 추출된 이미지 URL: ${productImageUrl || '없음'}
 
 페이지 내용:
 ${pageContent}
 
-아래 JSON 형식으로만 답해주세요:
+아래 JSON 형식으로만 답해주세요 (다른 텍스트 없이):
 {
   "name": "제품명 (브랜드 포함, 한국어)",
   "brand": "브랜드명",
@@ -73,12 +78,12 @@ ${pageContent}
   "occasion": ["착용상황"],
   "price": 숫자(원화),
   "size": "${size || ''}",
+  "image_url": "${productImageUrl || ''}",
   "confidence": 정확도0-100
 }`
       }];
     }
 
-    // Claude API 호출
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
