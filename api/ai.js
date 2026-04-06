@@ -19,7 +19,7 @@ export default async function handler(req) {
 
     if (type === 'product_url' && url) {
       let pageContent = '';
-      let productImageUrl = ''; // 제품 이미지 URL 추출
+      let allImages = []; // try 밖에서 선언
 
       try {
         const pageRes = await fetch(url, {
@@ -32,21 +32,16 @@ export default async function handler(req) {
         });
         const html = await pageRes.text();
 
-        // og:image 메타태그에서 제품 대표 이미지 추출
+        // 이미지 수집
+        const extraImgs = new Set();
         const ogImgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
           || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-        if (ogImgMatch) productImageUrl = ogImgMatch[1];
-
-        // 추가 이미지들 수집 (og:image:secure_url, twitter:image, JSON-LD 등)
-        const extraImgs = new Set();
-        if (productImageUrl) extraImgs.add(productImageUrl);
-        // og:image 여러 개
+        if (ogImgMatch) extraImgs.add(ogImgMatch[1]);
         const ogMatches = html.matchAll(/<meta[^>]*(?:property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']|content=["']([^"']+)["'][^>]*property=["']og:image(?::secure_url)?["'])/gi);
         for (const m of ogMatches) { const u = m[1]||m[2]; if(u&&u.startsWith('http'))extraImgs.add(u); }
-        // JSON-LD에서 이미지 추출
-        const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-        if (jsonLdMatch) {
-          for (const jl of jsonLdMatch) {
+        const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+        if (jsonLdMatches) {
+          for (const jl of jsonLdMatches) {
             try {
               const obj = JSON.parse(jl.replace(/<[^>]+>/g,''));
               const imgs = obj.image||obj.images||[];
@@ -54,7 +49,7 @@ export default async function handler(req) {
             } catch(e){}
           }
         }
-        const allImages = [...extraImgs].filter(u=>u&&u.startsWith('http')).slice(0, 8);
+        allImages = [...extraImgs].filter(u=>u&&u.startsWith('http')).slice(0, 8);
 
         // 텍스트 추출
         pageContent = html
