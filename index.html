@@ -1008,36 +1008,121 @@ function initHome(){
   renderCal();renderEvs();renderLaundry();runHomeAI(ws[0]);fetchFashionNews();
 }
 
-/* ════ GOOGLE CALENDAR ════ */
-function gcalConnect(){
-  const btn=document.getElementById('gcalBtn');btn.innerHTML='<span class="spin"></span>연결 중...';btn.disabled=true;
-  setTimeout(()=>{
-    gcalOK=true;
-    document.getElementById('gcalBanner').innerHTML=`<div class="gcal-ico" style="background:#E6F4EA"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></div><div class="gcal-text"><div class="gcal-title" style="color:#137333">✓ 구글 캘린더 연동 완료</div><div class="gcal-sub">내 일정·아내 일정·부부 공유·업무 캘린더 연결됨</div></div><div class="gcal-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#137333" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>연동됨<button style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);text-decoration:underline;margin-left:5px" onclick="location.reload()">해제</button></div>`;
-    document.getElementById('gcalChipsRow').style.display='block';
-    document.getElementById('gcalChipsRow').innerHTML=`<div class="cal-chips-row">${GCALS.map(c=>`<div class="cal-chip ${c.on?'':'off'}" style="background:${c.color}18;border-color:${c.color}55;color:${c.color}" onclick="togGCal('${c.id}')"><div class="cal-dot" style="background:${c.color}"></div>${c.name}</div>`).join('')}<button style="display:flex;align-items:center;gap:4px;padding:3px 9px;border:.5px solid var(--bdr2);border-radius:20px;background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-family:inherit;margin-left:auto" onclick="syncGCal(this)">🔄 동기화</button></div>`;
-    renderCal();renderEvs();runHomeAI(null);
-  },1400);
+/* ════ GOOGLE CALENDAR — 실제 OAuth 연동 ════ */
+const GCAL_CLIENT_ID='1070951608649-l0mect22ikvrkvjh3rgp0vevrtgsi5eq.apps.googleusercontent.com';
+const GCAL_API_KEY='AIzaSyDRq1nmP5VRNZoNINqqAyHEXvqs--wG3QE';
+const GCAL_SCOPES='https://www.googleapis.com/auth/calendar.readonly';
+let gapiReady=false,gisReady=false,tokenClient=null;
+let realEvents=[]; // 실제 캘린더에서 가져온 이벤트
+
+/* Google API 스크립트 동적 로드 */
+function loadGoogleScripts(){
+  if(document.getElementById('gapi-script'))return;
+  const s1=document.createElement('script');s1.id='gapi-script';s1.src='https://apis.google.com/js/api.js';
+  s1.onload=()=>{gapi.load('client',async()=>{await gapi.client.init({apiKey:GCAL_API_KEY,discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']});gapiReady=true;});};
+  document.head.appendChild(s1);
+  const s2=document.createElement('script');s2.src='https://accounts.google.com/gsi/client';
+  s2.onload=()=>{tokenClient=google.accounts.oauth2.initTokenClient({client_id:GCAL_CLIENT_ID,scope:GCAL_SCOPES,callback:onTokenResponse});gisReady=true;};
+  document.head.appendChild(s2);
 }
-function togGCal(id){const c=GCALS.find(x=>x.id===id);if(c)c.on=!c.on;document.getElementById('gcalChipsRow').innerHTML=`<div class="cal-chips-row">${GCALS.map(c=>`<div class="cal-chip ${c.on?'':'off'}" style="background:${c.color}18;border-color:${c.color}55;color:${c.color}" onclick="togGCal('${c.id}')"><div class="cal-dot" style="background:${c.color}"></div>${c.name}</div>`).join('')}<button style="display:flex;align-items:center;gap:4px;padding:3px 9px;border:.5px solid var(--bdr2);border-radius:20px;background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-family:inherit;margin-left:auto" onclick="syncGCal(this)">🔄 동기화</button></div>`;renderCal();renderEvs();}
-function syncGCal(b){b.innerHTML='<span class="spin"></span>';setTimeout(()=>{b.innerHTML='🔄 동기화';renderCal();renderEvs();},1100);}
+
+async function gcalConnect(){
+  const btn=document.getElementById('gcalBtn');
+  btn.innerHTML='<span class="spin"></span>연결 중...';btn.disabled=true;
+  loadGoogleScripts();
+  // 스크립트 로드 대기 (최대 5초)
+  let waited=0;
+  while((!gapiReady||!gisReady)&&waited<50){await new Promise(r=>setTimeout(r,100));waited++;}
+  if(!gapiReady||!gisReady){
+    btn.innerHTML='구글 계정으로 연동';btn.disabled=false;
+    showToast('⚠️ Google 라이브러리 로드 실패. 새로고침 후 재시도해주세요.');return;
+  }
+  tokenClient.requestAccessToken({prompt:'consent'});
+}
+
+async function onTokenResponse(resp){
+  if(resp.error){showToast('⚠️ 로그인 취소됨');document.getElementById('gcalBtn').disabled=false;document.getElementById('gcalBtn').innerHTML='구글 계정으로 연동';return;}
+  gcalOK=true;
+  // 배너를 연동 완료 상태로 변경
+  document.getElementById('gcalBanner').innerHTML=`
+    <div class="gcal-ico" style="background:#E6F4EA"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg></div>
+    <div class="gcal-text"><div class="gcal-title" style="color:#137333">✓ 구글 캘린더 연동 완료</div><div class="gcal-sub" id="gcalSubTxt">캘린더 불러오는 중...</div></div>
+    <div class="gcal-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#137333" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>연동됨
+      <button style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--muted);text-decoration:underline;margin-left:5px" onclick="gcalDisconnect()">해제</button>
+    </div>`;
+  document.getElementById('gcalChipsRow').style.display='block';
+  renderChipsRow();
+  await fetchRealEvents();
+  renderCal();renderEvs();runHomeAI(null);
+  showToast('✅ 구글 캘린더 연동 완료!');
+}
+
+function gcalDisconnect(){
+  gcalOK=false;realEvents=[];
+  google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token||'',()=>{});
+  gapi.client.setToken(null);
+  location.reload();
+}
+
+/* 실제 캘린더 목록 + 이벤트 가져오기 */
+async function fetchRealEvents(){
+  try{
+    // 내 모든 캘린더 목록 가져오기
+    const calList=await gapi.client.calendar.calendarList.list({});
+    const cals=calList.result.items||[];
+    document.getElementById('gcalSubTxt').textContent=`${cals.length}개 캘린더 연결됨`;
+
+    // 각 캘린더에서 이번 달 ~ 3개월 이벤트 가져오기
+    const now=new Date();
+    const tMin=new Date(now.getFullYear(),now.getMonth()-1,1).toISOString();
+    const tMax=new Date(now.getFullYear(),now.getMonth()+3,0).toISOString();
+    realEvents=[];
+
+    await Promise.all(cals.slice(0,8).map(async cal=>{
+      try{
+        const evRes=await gapi.client.calendar.events.list({
+          calendarId:cal.id,timeMin:tMin,timeMax:tMax,
+          singleEvents:true,orderBy:'startTime',maxResults:100
+        });
+        const evs=evRes.result.items||[];
+        evs.forEach(ev=>{
+          const startRaw=ev.start?.dateTime||ev.start?.date||'';
+          const endRaw=ev.end?.dateTime||ev.end?.date||'';
+          const isAllDay=!ev.start?.dateTime;
+          // 날짜 키 추출
+          const dateKey=startRaw.slice(0,10);
+          // 시간 포맷
+          let timeStr='종일';
+          if(!isAllDay){
+            const s=new Date(startRaw);const e=new Date(endRaw);
+            timeStr=`${s.getHours().toString().padStart(2,'0')}:${s.getMinutes().toString().padStart(2,'0')}–${e.getHours().toString().padStart(2,'0')}:${e.getMinutes().toString().padStart(2,'0')}`;
+          }
+          // 캘린더 소유자 추측 (아내 캘린더는 공유받은 것)
+          const isShared=cal.accessRole==='reader'||cal.id.includes('phw2907');
+          const calId=isShared?'wife':cal.primary?'personal':'work';
+          realEvents.push({title:ev.summary||'(제목 없음)',date:dateKey,time:timeStr,calId,color:cal.backgroundColor||'#4285F4',calName:cal.summary});
+        });
+      }catch(e){}
+    }));
+    renderCal();renderEvs();
+  }catch(e){showToast('캘린더 로드 오류: '+e.message);}
+}
+
 function makeGEvs(){
-  const now=new Date(),t=now.getDate(),y=now.getFullYear(),m=now.getMonth();
-  const mk=dd=>{const d=new Date(y,m,dd);return dK(d);};
-  return[
-    {title:'팀 주간 미팅',date:mk(t),time:'10:00–11:00',calId:'work'},
-    {title:'아내 - 미용실',date:mk(t),time:'14:00–15:30',calId:'wife'},
-    {title:'저녁 데이트 🍽️',date:mk(t),time:'19:00–21:00',calId:'shared'},
-    {title:'클라이언트 발표',date:mk(t+2),time:'09:00',calId:'work'},
-    {title:'아내 - 친구 모임',date:mk(t+2),time:'13:00',calId:'wife'},
-    {title:'주말 가족 나들이',date:mk(t+4),time:'종일',calId:'shared'},
-    {title:'건강검진',date:mk(t+6),time:'08:30',calId:'personal'},
-    {title:'운동',date:mk(t+1),time:'07:00–08:00',calId:'personal'},
-    {title:'분기 보고서',date:mk(t+3),time:'18:00',calId:'work'},
-    {title:'아내 - 부모님',date:mk(t+5),time:'종일',calId:'wife'},
-  ];
+  // 실제 연동이면 realEvents, 아니면 빈 배열
+  if(gcalOK&&realEvents.length>0)return realEvents;
+  return[];
 }
-function getGCal(id){return GCALS.find(c=>c.id===id)||{color:'#9CA3AF',name:'기타',owner:''};}
+
+function renderChipsRow(){
+  document.getElementById('gcalChipsRow').innerHTML=`<div class="cal-chips-row">${GCALS.map(c=>`<div class="cal-chip ${c.on?'':'off'}" style="background:${c.color}18;border-color:${c.color}55;color:${c.color}" onclick="togGCal('${c.id}')"><div class="cal-dot" style="background:${c.color}"></div>${c.name}</div>`).join('')}<button style="display:flex;align-items:center;gap:4px;padding:3px 9px;border:.5px solid var(--bdr2);border-radius:20px;background:transparent;font-size:11px;cursor:pointer;color:var(--muted);font-family:inherit;margin-left:auto" onclick="syncGCal(this)">🔄 동기화</button></div>`;
+}
+function togGCal(id){const c=GCALS.find(x=>x.id===id);if(c)c.on=!c.on;renderChipsRow();renderCal();renderEvs();}
+async function syncGCal(b){b.innerHTML='<span class="spin"></span>';await fetchRealEvents();b.innerHTML='🔄 동기화';showToast('✅ 동기화 완료');}
+function getGCal(id){
+  // 실제 이벤트는 자체 color를 가짐
+  return GCALS.find(c=>c.id===id)||{color:'#9CA3AF',name:'기타',owner:''};
+}
 
 /* ════ CALENDAR ════ */
 function moveMonth(d){calM+=d;if(calM>11){calM=0;calY++;}else if(calM<0){calM=11;calY--;}renderCal();}
