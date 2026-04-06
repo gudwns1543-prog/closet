@@ -1009,15 +1009,89 @@ function initHome(){
   document.getElementById('hDate').textContent=`${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
   const h=now.getHours();
   document.getElementById('hGreet').textContent=h<12?'좋은 아침이에요 ☀️':h<18?'좋은 오후에요 🌤️':'좋은 저녁이에요 🌙';
-  const ws=[{ico:'☀️',d:'맑음',hi:18,lo:8},{ico:'⛅',d:'구름',hi:16,lo:7},{ico:'🌧️',d:'비',hi:13,lo:9},{ico:'🌤️',d:'맑음',hi:20,lo:10},{ico:'☁️',d:'흐림',hi:15,lo:8},{ico:'⛅',d:'구름',hi:17,lo:9},{ico:'☀️',d:'맑음',hi:22,lo:11}];
-  document.getElementById('weatherGrid').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(now);d.setDate(d.getDate()+i);const w=ws[i%7];return`<div class="wcard"><div class="wday">${i===0?'오늘':i===1?'내일':days[d.getDay()]}</div><div class="wico">${w.ico}</div><div class="wtemp">${w.hi}°<span style="color:var(--muted);font-size:10px"> ${w.lo}°</span></div><div class="wdesc">${w.d}</div></div>`;}).join('');
+  // 날씨 — 로딩 표시 후 실제 API 호출
+  document.getElementById('weatherGrid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--muted);font-size:12px"><span class="spin"></span> 날씨 불러오는 중...</div>`;
   const total=clothes.length,val=clothes.reduce((a,c)=>a+(Number(c.price)||0),0);
   const sc={};clothes.forEach(c=>{(Array.isArray(c.season)?c.season:[c.season]).filter(Boolean).forEach(s=>{sc[s]=(sc[s]||0)+1;});});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('briefRows').innerHTML=[['전체 아이템',total+'개'],['총 가치','₩'+Math.round(val/1000)+'K'],['주요 계절',ts?ts[0]:'-'],['새것/거의새것',clothes.filter(c=>c.condition==='새것'||c.condition==='거의 새것').length+'개']].map(([l,v])=>`<div class="brow"><span>${l}</span><span class="bval">${v}</span></div>`).join('');
   document.getElementById('newsEl').innerHTML='<span class="spin"></span> 뉴스 불러오는 중...';
   calY=now.getFullYear();calM=now.getMonth();calSel=tK();
-  renderCal();renderEvs();renderLaundry();runHomeAI(ws[0]);fetchFashionNews();
+  renderCal();renderEvs();renderLaundry();fetchFashionNews();
+  fetchWeather(); // 실제 날씨 호출 (GPS 요청 포함)
+}
+
+/* ════ 실제 날씨 — Open-Meteo + GPS ════ */
+// WMO 날씨 코드 → 이모지 + 설명
+const WMO={
+  0:{ico:'☀️',d:'맑음'},1:{ico:'🌤️',d:'대체로맑음'},2:{ico:'⛅',d:'구름조금'},3:{ico:'☁️',d:'흐림'},
+  45:{ico:'🌫️',d:'안개'},48:{ico:'🌫️',d:'안개'},
+  51:{ico:'🌦️',d:'이슬비'},53:{ico:'🌦️',d:'이슬비'},55:{ico:'🌦️',d:'이슬비'},
+  61:{ico:'🌧️',d:'비'},63:{ico:'🌧️',d:'비'},65:{ico:'🌧️',d:'폭우'},
+  71:{ico:'🌨️',d:'눈'},73:{ico:'🌨️',d:'눈'},75:{ico:'❄️',d:'폭설'},
+  77:{ico:'🌨️',d:'싸락눈'},
+  80:{ico:'🌦️',d:'소나기'},81:{ico:'🌧️',d:'소나기'},82:{ico:'⛈️',d:'강한소나기'},
+  85:{ico:'🌨️',d:'눈소나기'},86:{ico:'🌨️',d:'눈소나기'},
+  95:{ico:'⛈️',d:'뇌우'},96:{ico:'⛈️',d:'우박뇌우'},99:{ico:'⛈️',d:'우박뇌우'},
+};
+function wmoInfo(code){return WMO[code]||{ico:'🌡️',d:'알수없음'};}
+
+async function fetchWeather(){
+  const days=['일','월','화','수','목','금','토'];
+  const grid=document.getElementById('weatherGrid');
+  if(!navigator.geolocation){
+    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--muted);font-size:12px">📍 위치 정보를 지원하지 않는 브라우저예요</div>`;
+    return;
+  }
+  // GPS 위치 요청
+  navigator.geolocation.getCurrentPosition(
+    async(pos)=>{
+      const lat=pos.coords.latitude.toFixed(4);
+      const lon=pos.coords.longitude.toFixed(4);
+      try{
+        // Open-Meteo API — API 키 불필요, 무료
+        const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`;
+        const res=await fetch(url);
+        const data=await res.json();
+        const {weathercode,temperature_2m_max,temperature_2m_min,time}=data.daily;
+        const now=new Date();
+        // 지역명 역지오코딩 (Open-Meteo 무료)
+        let locName='';
+        try{
+          const gr=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`);
+          const gd=await gr.json();
+          locName=gd.address?.city||gd.address?.town||gd.address?.county||gd.address?.state||'';
+        }catch(e){}
+        // 히어로 서브텍스트에 지역명 표시
+        const heroSub=document.querySelector('.hero-sub');
+        if(heroSub&&locName)heroSub.textContent=`📍 ${locName} 날씨 기준`;
+        // 7일 날씨 카드 렌더
+        grid.innerHTML=time.map((t,i)=>{
+          const d=new Date(t+'T00:00:00');
+          const w=wmoInfo(weathercode[i]);
+          const hi=Math.round(temperature_2m_max[i]);
+          const lo=Math.round(temperature_2m_min[i]);
+          const label=i===0?'오늘':i===1?'내일':days[d.getDay()];
+          return`<div class="wcard"><div class="wday">${label}</div><div class="wico">${w.ico}</div><div class="wtemp">${hi}°<span style="color:var(--muted);font-size:10px"> ${lo}°</span></div><div class="wdesc">${w.d}</div></div>`;
+        }).join('');
+        // AI 추천도 실제 날씨로 업데이트
+        runHomeAI({ico:wmoInfo(weathercode[0]).ico,d:wmoInfo(weathercode[0]).d,hi:Math.round(temperature_2m_max[0]),lo:Math.round(temperature_2m_min[0])});
+      }catch(e){
+        grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:12px;color:var(--muted);font-size:12px">⚠️ 날씨 정보를 불러오지 못했어요</div>`;
+        runHomeAI(null);
+      }
+    },
+    (err)=>{
+      // 위치 권한 거부 시
+      let msg='';
+      if(err.code===1)msg='📍 위치 권한이 거부됐어요. 브라우저 설정에서 허용해주세요.';
+      else if(err.code===2)msg='📍 위치를 확인할 수 없어요.';
+      else msg='📍 위치 요청 시간이 초과됐어요.';
+      grid.innerHTML=`<div style="grid-column:1/-1;padding:10px 12px;background:#FEF9C3;border-radius:var(--r);font-size:11px;color:#92400E;text-align:center;line-height:1.6">${msg}<br><span style="font-size:10px;opacity:.7">날씨 없이도 다른 기능은 모두 정상 작동해요</span></div>`;
+      runHomeAI(null);
+    },
+    {timeout:8000,maximumAge:300000} // 5분 캐시
+  );
 }
 
 /* ════ GOOGLE CALENDAR — 실제 OAuth 연동 ════ */
