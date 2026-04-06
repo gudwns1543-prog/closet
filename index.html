@@ -856,12 +856,34 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
             <div id="urlConfBar" style="height:100%;border-radius:3px;background:var(--p);transition:width .6s;width:0%"></div>
           </div>
         </div>
+
+        <!-- 이미지 섹션 -->
+        <div style="border:.5px solid var(--bdr);border-radius:var(--rl);overflow:hidden;margin-bottom:12px">
+          <div style="padding:10px 14px;background:var(--sur);border-bottom:.5px solid var(--bdr);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">📷 제품 이미지</div>
+          <div style="padding:12px 14px">
+            <!-- 자동 추출 이미지 썸네일 -->
+            <div id="urlAutoImgs" style="display:none;margin-bottom:10px">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:7px;font-weight:500">자동 추출된 이미지 — 클릭하여 선택</div>
+              <div id="urlThumbRow" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
+            </div>
+            <!-- 직접 업로드 -->
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:7px;font-weight:500">직접 추가 (여러 장 가능)</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="urlManualImgWrap">
+                <label style="width:60px;height:60px;border:1.5px dashed var(--bdr2);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--muted);transition:all .15s;flex-shrink:0" onmouseover="this.style.borderColor='var(--p)'" onmouseout="this.style.borderColor='var(--bdr2)'">
+                  <input type="file" accept="image/*" multiple style="display:none" onchange="onUrlImgUpload(event)">
+                  +
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 결과 미리보기 -->
         <div id="urlPreviewCard" style="border:.5px solid var(--bdr);border-radius:var(--rl);overflow:hidden;margin-bottom:12px">
           <div id="urlPreviewHead" style="padding:12px 14px;background:var(--sur);border-bottom:.5px solid var(--bdr);display:flex;align-items:center;gap:10px"></div>
           <div id="urlPreviewBody" style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
         </div>
-        <!-- 수정 안내 -->
         <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px 10px;background:var(--sur);border-radius:var(--r)">
           💡 틀린 정보가 있으면 저장 후 수정 버튼으로 수정할 수 있어요
         </div>
@@ -1929,30 +1951,25 @@ function showUrlResult(r){
   document.getElementById('urlConfPct').textContent=conf+'%';
   document.getElementById('urlConfBar').style.width=conf+'%';
   document.getElementById('urlConfBar').style.background=conf>=80?'var(--green)':conf>=60?'var(--amber)':'var(--red)';
+
+  // 자동 추출 이미지
+  const allImgs=r.all_images&&r.all_images.length?r.all_images:(r.image_url?[r.image_url]:[]);
+  urlSelectedImgIdx=0; urlManualImgs=[];
+  const autoBox=document.getElementById('urlAutoImgs');
+  const thumbRow=document.getElementById('urlThumbRow');
+  if(allImgs.length>0){
+    autoBox.style.display='block';
+    thumbRow.innerHTML=allImgs.map((src,i)=>`<div onclick="selectUrlImg(${i})" id="urlImg${i}" style="width:64px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid ${i===0?'var(--p)':'var(--bdr)'};transition:all .15s;background:var(--sur)"><img src="${src}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.style.display='none'"></div>`).join('');
+  } else {
+    autoBox.style.display='none';
+  }
+  renderUrlManualImgs();
+
   const ci=CF[r.category]||{ico:'👚',lbl:r.category||'의류'};
   const mainColor=r.colors?.[0];
-
-  // 이미지 선택 UI (여러 장)
-  const allImgs=r.all_images&&r.all_images.length?r.all_images:(r.image_url?[r.image_url]:[]);
-  let imgHtml='';
-  if(allImgs.length>0){
-    imgHtml=`<div style="margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">📷 대표 이미지 선택 (클릭)</div>
-      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
-        ${allImgs.map((src,i)=>`<div onclick="selectUrlImg(${i})" id="urlImg${i}" style="width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid ${i===0?'var(--p)':'var(--bdr)'};transition:all .15s;background:var(--sur)">
-          <img src="${src}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.style.display='none'">
-        </div>`).join('')}
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:5px">선택된 이미지가 옷 카드에 표시돼요</div>
-    </div>`;
-  }
-
   document.getElementById('urlPreviewHead').innerHTML=`
     <div style="width:44px;height:44px;border-radius:10px;background:${mainColor?mainColor.hex+'22':'var(--sur)'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:.5px solid var(--bdr)">${ci.ico}</div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:700;margin-bottom:2px">${r.name||'제품명 추출 실패'}</div>
-      <div style="font-size:11px;color:var(--muted)">${r.brand||''} ${r.price?'· ₩'+Number(r.price).toLocaleString():''}</div>
-    </div>`;
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;margin-bottom:2px">${r.name||'제품명 추출 실패'}</div><div style="font-size:11px;color:var(--muted)">${r.brand||''} ${r.price?'· ₩'+Number(r.price).toLocaleString():''}</div></div>`;
   const rows=[
     ['카테고리',ci.lbl],
     ['색상',(r.colors||[]).map(c=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:9px;height:9px;border-radius:50%;background:${c.hex};border:.5px solid rgba(0,0,0,.1)"></span>${c.name}</span>`).join(', ')||'-'],
@@ -1964,20 +1981,34 @@ function showUrlResult(r){
     ['소매',(r.sleeve||[]).join(', ')||'-'],
   ];
   document.getElementById('urlPreviewBody').innerHTML=
-    imgHtml+
     rows.map(([l,v])=>`<div style="border:.5px solid var(--bdr);border-radius:var(--r);padding:7px 9px"><div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">${l}</div><div style="font-size:11px;font-weight:600">${v}</div></div>`).join('');
 }
 
-// 이미지 선택
 let urlSelectedImgIdx=0;
+let urlManualImgs=[];
+
 function selectUrlImg(idx){
   urlSelectedImgIdx=idx;
   const allImgs=urlAnalysisResult?.all_images||[];
-  allImgs.forEach((_,i)=>{
-    const el=document.getElementById('urlImg'+i);
-    if(el)el.style.borderColor=i===idx?'var(--p)':'var(--bdr)';
-  });
+  allImgs.forEach((_,i)=>{const el=document.getElementById('urlImg'+i);if(el)el.style.borderColor=i===idx?'var(--p)':'var(--bdr)';});
 }
+
+function onUrlImgUpload(e){
+  Array.from(e.target.files).forEach(file=>{
+    const r=new FileReader();
+    r.onload=ev=>{urlManualImgs.push(ev.target.result);renderUrlManualImgs();};
+    r.readAsDataURL(file);
+  });
+  e.target.value='';
+}
+
+function renderUrlManualImgs(){
+  const wrap=document.getElementById('urlManualImgWrap');if(!wrap)return;
+  const thumbs=urlManualImgs.map((src,i)=>`<div style="position:relative;width:60px;height:60px;flex-shrink:0"><img src="${src}" style="width:60px;height:60px;object-fit:contain;border-radius:8px;border:.5px solid var(--bdr);background:var(--sur)"><button onclick="removeUrlManualImg(${i})" style="position:absolute;top:-5px;right:-5px;width:17px;height:17px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:11px;line-height:1">×</button></div>`).join('');
+  wrap.innerHTML=thumbs+`<label style="width:60px;height:60px;border:1.5px dashed var(--bdr2);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:var(--muted);flex-shrink:0" onmouseover="this.style.borderColor='var(--p)'" onmouseout="this.style.borderColor='var(--bdr2)'"><input type="file" accept="image/*" multiple style="display:none" onchange="onUrlImgUpload(event)">+</label>`;
+}
+
+function removeUrlManualImg(idx){urlManualImgs.splice(idx,1);renderUrlManualImgs();}
 
 function resetUrlTab(){
   urlAnalysisResult=null;
@@ -1998,24 +2029,32 @@ function applyUrlResult(){
   document.getElementById('fUrl').value=r.url||'';
   document.getElementById('fMe').value=r.size?`사이즈: ${r.size}`:'';
 
-  // 선택된 이미지 (사용자가 선택한 것 or 첫 번째)
   const allImgs=r.all_images&&r.all_images.length?r.all_images:(r.image_url?[r.image_url]:[]);
-  const selectedSrc=allImgs[urlSelectedImgIdx]||allImgs[0]||'';
+  const selectedAutoSrc=allImgs[urlSelectedImgIdx]||allImgs[0]||'';
 
-  if(selectedSrc&&selectedSrc.startsWith('http')){
+  // 수동 업로드 이미지를 imgs 배열에 추가
+  mAllImgs=[...urlManualImgs]; // 수동 업로드한 것들 (이미 base64)
+
+  if(selectedAutoSrc&&selectedAutoSrc.startsWith('http')){
+    // 자동 추출 이미지 — canvas로 base64 변환 시도
     const img=new Image();img.crossOrigin='anonymous';
     img.onload=()=>{
       try{
         const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
         c.getContext('2d').drawImage(img,0,0);
         mImgD=c.toDataURL('image/jpeg',0.85);
-        // 여러 장 모두 저장
-        mAllImgs=allImgs;
+        if(!mAllImgs.includes(mImgD))mAllImgs.unshift(mImgD);
         resetIZ(true);showToast('✅ 이미지 자동 등록!');
-      }catch(e){mImgD=null;mAllImgs=allImgs;showToast('✅ 정보 입력 완료! (이미지는 직접 업로드)');}
+      }catch(e){
+        mImgD=mAllImgs[0]||null;
+        resetIZ(!!mImgD);
+        showToast('✅ 정보 입력 완료! (대표이미지는 직접 업로드해주세요)');
+      }
     };
-    img.onerror=()=>{mImgD=null;mAllImgs=allImgs;};
-    img.src=selectedSrc;
+    img.onerror=()=>{mImgD=mAllImgs[0]||null;resetIZ(!!mImgD);};
+    img.src=selectedAutoSrc;
+  } else if(mAllImgs.length>0){
+    mImgD=mAllImgs[0];resetIZ(true);
   }
 
   MS_FIELDS.forEach(f=>{
